@@ -49,7 +49,8 @@ fun ChildProfileQRScreen(
     onBackClick: () -> Unit = {},
     onGenerateQuizClick: (String, String, Int, String) -> Unit = { _, _, _, _ -> },
     onViewResultsClick: () -> Unit = {},
-    onQuizGenerated: (Quiz) -> Unit = {}
+    onQuizGenerated: (Quiz) -> Unit = {},
+    onGiftManagementClick: () -> Unit = {}
 ) {
     var showQRDialog by remember { mutableStateOf(false) }
     var childState by remember { mutableStateOf(child) }
@@ -365,6 +366,32 @@ fun ChildProfileQRScreen(
                             )
                             Text(
                                 text = "Results",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2E2E2E)
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = onGiftManagementClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "🎁",
+                                fontSize = 20.sp
+                            )
+                            Text(
+                                text = "Gifts",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF2E2E2E)

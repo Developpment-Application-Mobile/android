@@ -21,8 +21,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-   private const val BASE_URL = "https://tractile-trang-adaptively.ngrok-free.dev/"
-    
+//    private const val BASE_URL = "https://tractile-trang-adaptively.ngrok-free.dev/"
+    private const val BASE_URL = "https://accessorial-zaida-soggily.ngrok-free.dev/"
+
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -439,6 +440,92 @@ object ApiClient {
             }
         } catch (e: Exception) {
             android.util.Log.e("ApiClient", "submitQuizAnswers - Exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Get all gifts for a child
+     */
+    suspend fun getGifts(
+        parentId: String,
+        kidId: String
+    ): Result<List<com.example.edukid_android.models.ShopItem>> {
+        return try {
+            val response = apiService.getGifts(parentId, kidId)
+            if (response.isSuccessful && response.body() != null) {
+                val gifts = response.body()!!.map { it.toGift() }
+                Result.success(gifts)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Get gifts failed: ${response.code()}"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Create a gift for a child
+     */
+    suspend fun createGift(
+        parentId: String,
+        kidId: String,
+        title: String,
+        cost: Int
+    ): Result<String> {
+        return try {
+            val request = com.example.edukid_android.models.CreateGiftRequest(title = title, cost = cost)
+            val response = apiService.createGift(parentId, kidId, request)
+            if (response.isSuccessful) {
+                Result.success("Gift created successfully")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Create gift failed: ${response.code()}"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Delete a gift for a child
+     */
+    suspend fun deleteGift(
+        parentId: String,
+        kidId: String,
+        giftId: String
+    ): Result<String> {
+        return try {
+            val response = apiService.deleteGift(parentId, kidId, giftId)
+            if (response.isSuccessful) {
+                Result.success("Gift deleted successfully")
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Delete gift failed: ${response.code()}"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Buy a gift for a child
+     */
+    suspend fun buyGift(
+        parentId: String,
+        kidId: String,
+        giftId: String
+    ): Result<ChildResponse> {
+        return try {
+            val response = apiService.buyGift(parentId, kidId, giftId)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Buy gift failed: ${response.code()}"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

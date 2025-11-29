@@ -18,9 +18,11 @@ import com.example.edukid_android.models.Quiz
 import com.example.edukid_android.screens.AddChildScreen
 import com.example.edukid_android.screens.ChildProfileQRScreen
 import com.example.edukid_android.screens.ChildQRLoginScreen
+import com.example.edukid_android.screens.ChildResultsScreen
 import com.example.edukid_android.screens.ForgotPasswordScreen
 import com.example.edukid_android.screens.ResetPasswordScreen
 import com.example.edukid_android.screens.GamesScreen
+import com.example.edukid_android.screens.GiftManagementScreen
 import com.example.edukid_android.screens.ImprovedChildHomeScreen
 import com.example.edukid_android.screens.ParentDashboardScreen
 import com.example.edukid_android.screens.ParentEditProfileScreen
@@ -148,6 +150,9 @@ class MainActivity : ComponentActivity() {
                                 onQuizClick = { quiz ->
                                     currentQuiz = quiz
                                     navController.navigate("quizPlay")
+                                },
+                                onChildUpdate = { updatedChild ->
+                                    currentChild = updatedChild
                                 }
                             )
                         } ?: run {
@@ -246,8 +251,7 @@ class MainActivity : ComponentActivity() {
                                     // For now, just navigate back or show a message
                                 },
                                 onViewResultsClick = {
-                                    // TODO: Implement view results navigation
-                                    // For now, just navigate back or show a message
+                                    navController.navigate("childResults/$childId")
                                 },
                                 onQuizGenerated = { quiz ->
                                     currentParent = currentParent?.let { p ->
@@ -258,6 +262,56 @@ class MainActivity : ComponentActivity() {
                                         PreferencesManager.saveParentData(this@MainActivity, updatedParent)
                                         updatedParent
                                     }
+                                },
+                                onGiftManagementClick = {
+                                    navController.navigate("giftManagement/$childId")
+                                }
+                            )
+                        } else {
+                            // If child not found, navigate back
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+                    composable(
+                        route = "childResults/{childId}",
+                        arguments = listOf(
+                            navArgument("childId") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val childId = backStackEntry.arguments?.getString("childId")
+                        val child = currentParent?.children?.find { it.id == childId }
+                        
+                        if (child != null) {
+                            ChildResultsScreen(
+                                child = child,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        } else {
+                            // If child not found, navigate back
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+                    composable(
+                        route = "giftManagement/{childId}",
+                        arguments = listOf(
+                            navArgument("childId") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val childId = backStackEntry.arguments?.getString("childId")
+                        val child = currentParent?.children?.find { it.id == childId }
+                        
+                        if (child != null) {
+                            GiftManagementScreen(
+                                child = child,
+                                parentId = currentParent?.id,
+                                onBackClick = {
+                                    navController.popBackStack()
                                 }
                             )
                         } else {

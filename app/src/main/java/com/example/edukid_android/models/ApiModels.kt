@@ -57,6 +57,11 @@ data class SubmitAnswersRequest(
     val answers: List<Int>
 )
 
+data class CreateGiftRequest(
+    val title: String,
+    val cost: Int
+)
+
 // Response model for sign up
 data class SignUpResponse(
     @SerializedName("access_token")
@@ -77,7 +82,15 @@ data class ChildResponse(
     @SerializedName("_id")
     val id: String? = null,
     @SerializedName("parentId")
-    val parentId: String? = null
+    val parentId: String? = null,
+    @SerializedName("lifetimeScore")
+    val lifetimeScore: Int? = 0,
+    @SerializedName("progressionLevel")
+    val progressionLevel: Int? = 1,
+    @SerializedName("inventory")
+    val inventory: List<InventoryItemResponse>? = emptyList(),
+    @SerializedName("shopCatalog")
+    val shopCatalog: List<ShopItemResponse>? = emptyList()
 ) {
     fun toChild(): Child {
         return Child(
@@ -88,7 +101,55 @@ data class ChildResponse(
             quizzes = this.quizzes?.map { it.toQuiz() } ?: emptyList(),
             Score = this.score ?: 0,
             id = this.id,
-            parentId = this.parentId
+            parentId = this.parentId,
+            lifetimeScore = this.lifetimeScore ?: 0,
+            progressionLevel = this.progressionLevel ?: 1,
+            inventory = this.inventory?.map { it.toInventoryItem() } ?: emptyList(),
+            shopCatalog = this.shopCatalog?.map { it.toShopItem() } ?: emptyList()
+        )
+    }
+}
+
+data class InventoryItemResponse(
+    val title: String? = null,
+    val cost: Int? = 0,
+    val purchasedAt: String? = null
+) {
+    fun toInventoryItem(): InventoryItem {
+        return InventoryItem(
+            title = this.title ?: "",
+            cost = this.cost ?: 0,
+            purchasedAt = this.purchasedAt ?: ""
+        )
+    }
+}
+
+data class ShopItemResponse(
+    @SerializedName("_id")
+    val id: String? = null,
+    val title: String? = null,
+    val cost: Int? = 0
+) {
+    fun toShopItem(): ShopItem {
+        return ShopItem(
+            id = this.id,
+            title = this.title ?: "",
+            cost = this.cost ?: 0
+        )
+    }
+}
+
+data class GiftResponse(
+    @SerializedName("_id")
+    val id: String? = null,
+    val title: String? = null,
+    val cost: Int? = 0
+) {
+    fun toGift(): ShopItem {
+        return ShopItem(
+            id = this.id,
+            title = this.title ?: "",
+            cost = this.cost ?: 0
         )
     }
 }

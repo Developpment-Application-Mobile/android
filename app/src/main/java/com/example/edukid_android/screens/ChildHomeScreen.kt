@@ -37,21 +37,53 @@ import com.example.edukid_android.components.BottomNavigationBar
 import com.example.edukid_android.models.Child
 import com.example.edukid_android.models.Quiz
 import com.example.edukid_android.models.QuizType
+import com.example.edukid_android.models.ShopItem
 import com.example.edukid_android.models.getBackgroundColor
 import com.example.edukid_android.models.getIconRes
 import com.example.edukid_android.models.getProgressColor
+import com.example.edukid_android.utils.ApiClient
 import com.example.edukid_android.utils.getAvatarResource
+import kotlinx.coroutines.launch
 
 
 @Composable
 fun ImprovedChildHomeScreen(
     navController: NavController? = null,
     child: Child? = null,
-    onQuizClick: (Quiz) -> Unit = {}
+    onQuizClick: (Quiz) -> Unit = {},
+    onChildUpdate: ((Child) -> Unit)? = null
 ) {
     var selectedFilter by remember { mutableStateOf<QuizType?>(null) }
 
-    val childState by remember(child) { mutableStateOf(child) }
+    var childState by remember { mutableStateOf(child) }
+    
+    // Update local state when child prop changes
+    LaunchedEffect(child) {
+        childState = child
+    }
+    
+    // Gifts state
+    var gifts by remember { mutableStateOf<List<ShopItem>>(emptyList()) }
+    var isLoadingGifts by remember { mutableStateOf(false) }
+    var giftError by remember { mutableStateOf<String?>(null) }
+    var giftSuccess by remember { mutableStateOf<String?>(null) }
+    var isBuyingGift by remember { mutableStateOf<String?>(null) } // giftId being purchased
+    val scope = rememberCoroutineScope()
+    
+    // Load gifts on screen start
+    LaunchedEffect(childState?.parentId, childState?.id) {
+        if (childState?.parentId != null && childState?.id != null) {
+            isLoadingGifts = true
+            val result = ApiClient.getGifts(childState!!.parentId!!, childState!!.id!!)
+            result.onSuccess { giftList ->
+                gifts = giftList
+                isLoadingGifts = false
+            }.onFailure { e ->
+                giftError = e.message ?: "Failed to load gifts"
+                isLoadingGifts = false
+            }
+        }
+    }
 
     val allQuizzes = remember(childState) {
         childState?.quizzes ?: emptyList()
@@ -200,12 +232,76 @@ fun ImprovedChildHomeScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Gifts Section - Compact
+                if (gifts.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "🎁 Gifts",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                        Text(
+                            text = "${gifts.size} available",
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                    
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    ) {
+                        items(gifts) { gift ->
+                            CompactGiftCard(
+                                gift = gift,
+                                currentScore = childState?.Score ?: 0,
+                                isBuying = isBuyingGift == gift.id,
+                                onBuyClick = {
+                                    if (childState?.parentId != null && childState?.id != null && gift.id != null) {
+                                        isBuyingGift = gift.id
+                                        scope.launch {
+                                            val result = ApiClient.buyGift(
+                                                parentId = childState!!.parentId!!,
+                                                kidId = childState!!.id!!,
+                                                giftId = gift.id!!
+                                            )
+                                            result.onSuccess {
+                                                // Simply subtract the gift cost from current score
+                                                childState = childState?.copy(Score = (childState?.Score ?: 0) - gift.cost)
+                                                giftSuccess = "You bought ${gift.title}!"
+                                                isBuyingGift = null
+                                                // Reload gifts to remove the purchased one
+                                                val reloadResult = ApiClient.getGifts(childState!!.parentId!!, childState!!.id!!)
+                                                reloadResult.onSuccess { giftList ->
+                                                    gifts = giftList
+                                                }
+                                            }.onFailure { e ->
+                                                giftError = e.message ?: "Failed to buy gift"
+                                                isBuyingGift = null
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(20.dp))
                 
                 // Category Filter
                 Text(
-                    text = "Categories",
-                    fontSize = 16.sp,
+                    text = "📚 Quiz Categories",
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -275,7 +371,7 @@ fun ImprovedChildHomeScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 
                 // Quizzes List
                 LazyColumn(
@@ -377,6 +473,157 @@ fun ImprovedChildHomeScreen(
                     }
                 }
             )
+        }
+    }
+    
+    // Gift error snackbar
+    giftError?.let { error ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            LaunchedEffect(error) {
+                kotlinx.coroutines.delay(4000)
+                giftError = null
+            }
+            Snackbar(
+                action = {
+                    TextButton(onClick = { giftError = null }) {
+                        Text("Dismiss", color = Color.White)
+                    }
+                },
+                containerColor = Color(0xFFD32F2F),
+                contentColor = Color.White
+            ) {
+                Text(text = error, color = Color.White)
+            }
+        }
+    }
+    
+    // Gift success snackbar
+    giftSuccess?.let { msg ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            LaunchedEffect(msg) {
+                kotlinx.coroutines.delay(3000)
+                giftSuccess = null
+            }
+            Snackbar(
+                containerColor = Color(0xFF43A047),
+                contentColor = Color.White
+            ) {
+                Text(text = msg, color = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
+fun CompactGiftCard(
+    gift: ShopItem,
+    currentScore: Int,
+    isBuying: Boolean,
+    onBuyClick: () -> Unit
+) {
+    val canAfford = currentScore >= gift.cost
+    
+    Card(
+        modifier = Modifier
+            .width(110.dp)
+            .clickable(enabled = canAfford && !isBuying, onClick = onBuyClick),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (canAfford) Color.White.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.6f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = Color(0xFFAF7EE7).copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "🎁",
+                    fontSize = 20.sp
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(6.dp))
+            
+            Text(
+                text = gift.title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF2E2E2E),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 14.sp
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = "⭐",
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = "${gift.cost}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (canAfford) Color(0xFF2E2E2E) else Color(0xFF999999)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(6.dp))
+            
+            if (isBuying) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = Color(0xFFAF7EE7),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Button(
+                    onClick = onBuyClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (canAfford) Color(0xFFAF7EE7) else Color(0xFFCCCCCC)
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    enabled = canAfford,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (canAfford) "Buy" else "${gift.cost - currentScore}",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
         }
     }
 }

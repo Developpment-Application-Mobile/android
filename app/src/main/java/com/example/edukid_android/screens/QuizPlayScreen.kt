@@ -75,6 +75,9 @@ fun QuizPlayScreen(
     var showEncouragement by remember { mutableStateOf(false) }
     var encouragementMessage by remember { mutableStateOf("") }
     var streak by remember { mutableStateOf(0) }
+    var showCreditProgress by remember { mutableStateOf(false) }
+    var gifts by remember { mutableStateOf<List<ShopItem>>(emptyList()) }
+    var updatedChildScore by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
 
     // Check if quiz is already completed (view-only mode)
@@ -703,10 +706,24 @@ fun QuizPlayScreen(
                                                                 answers = answers
                                                             )
                                                             submitResult.fold(
-                                                                onSuccess = {
+                                                                onSuccess = { childResponse ->
                                                                     android.util.Log.d("QuizPlayScreen", "Finish button - Quiz submitted successfully!")
-                                                                    onQuizSubmitted?.invoke()
-                                                                    onExit?.invoke() ?: navController?.popBackStack()
+                                                                    updatedChildScore = childResponse.toChild().Score
+                                                                    // Load gifts to show progress
+                                                                    if (parentId != null && kidId != null) {
+                                                                        scope.launch {
+                                                                            val giftsResult = ApiClient.getGifts(parentId, kidId)
+                                                                            giftsResult.onSuccess { giftList ->
+                                                                                gifts = giftList
+                                                                                showCreditProgress = true
+                                                                            }.onFailure {
+                                                                                // Still show progress even if gifts fail to load
+                                                                                showCreditProgress = true
+                                                                            }
+                                                                        }
+                                                                    } else {
+                                                                        showCreditProgress = true
+                                                                    }
                                                                 },
                                                                 onFailure = { e ->
                                                                     android.util.Log.e("QuizPlayScreen", "Finish button - Failed to submit: ${e.message}", e)
@@ -807,6 +824,19 @@ fun QuizPlayScreen(
                     Text(text = err, color = Color.White, fontSize = 13.sp)
                 }
             }
+        }
+        
+        // Credit Progress Dialog
+        if (showCreditProgress) {
+            CreditProgressDialog(
+                currentScore = updatedChildScore ?: totalScore,
+                gifts = gifts,
+                onDismiss = {
+                    showCreditProgress = false
+                    onQuizSubmitted?.invoke()
+                    onExit?.invoke() ?: navController?.popBackStack()
+                }
+            )
         }
     }
 }
@@ -1273,4 +1303,204 @@ fun EncouragementMessageOverlay(message: String) {
             }
         }
     }
+}
+
+@Composable
+fun CreditProgressDialog(
+    currentScore: Int,
+    gifts: List<ShopItem>,
+    onDismiss: () -> Unit
+) {
+    val sortedGifts = remember(gifts) {
+        gifts.sortedBy { it.cost }
+    }
+    
+    val cheapestGift = sortedGifts.firstOrNull()
+    val progressToCheapest = remember(currentScore, cheapestGift) {
+        if (cheapestGift != null && cheapestGift.cost > 0) {
+            (currentScore.toFloat() / cheapestGift.cost.toFloat()).coerceIn(0f, 1f)
+        } else {
+            1f
+        }
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(24.dp),
+        title = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "🎉 Quiz Completed!",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E2E2E),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "⭐",
+                        fontSize = 20.sp
+                    )
+                    Text(
+                        text = "Your Score: $currentScore",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFAF7EE7)
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (gifts.isEmpty()) {
+                    Text(
+                        text = "No gifts available yet.\nKeep playing to earn more points!",
+                        fontSize = 14.sp,
+                        color = Color(0xFF666666),
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    Text(
+                        text = "Progress to Gifts:",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E2E2E),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    
+                    sortedGifts.forEach { gift ->
+                        val progress = if (gift.cost > 0) {
+                            (currentScore.toFloat() / gift.cost.toFloat()).coerceIn(0f, 1f)
+                        } else {
+                            1f
+                        }
+                        val canAfford = currentScore >= gift.cost
+                        
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (canAfford) Color(0xFFE8F5E9) else Color(0xFFF5F5F5)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = gift.title,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF2E2E2E)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = "⭐",
+                                                fontSize = 14.sp
+                                            )
+                                            Text(
+                                                text = "${gift.cost} points",
+                                                fontSize = 14.sp,
+                                                color = Color(0xFF666666)
+                                            )
+                                        }
+                                    }
+                                    
+                                    if (canAfford) {
+                                        Text(
+                                            text = "✓ Can Buy!",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF43A047)
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "Need ${gift.cost - currentScore}",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color(0xFF999999)
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                // Progress bar
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .background(
+                                            color = Color(0xFFE0E0E0),
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(progress)
+                                            .background(
+                                                color = if (canAfford) Color(0xFF43A047) else Color(0xFFAF7EE7),
+                                                shape = RoundedCornerShape(4.dp)
+                                            )
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(4.dp))
+                                
+                                Text(
+                                    text = "${(progress * 100).toInt()}% to ${gift.title}",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFAF7EE7)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "Continue",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
+    )
 }

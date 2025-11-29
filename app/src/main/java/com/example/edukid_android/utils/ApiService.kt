@@ -2,6 +2,7 @@ package com.example.edukid_android.utils
 
 import com.example.edukid_android.models.AddChildRequest
 import com.example.edukid_android.models.ChildResponse
+import com.example.edukid_android.models.CreateGiftRequest
 import com.example.edukid_android.models.LoginRequest
 import com.example.edukid_android.models.ParentResponse
 import com.example.edukid_android.models.QRCodeResponse
@@ -58,6 +59,33 @@ interface ApiService {
         @Path("kidId") kidId: String,
         @Body request: GenerateQuizRequest
     ): Response<ResponseBody>
+
+    @GET("parents/{parentId}/kids/{kidId}/gifts")
+    suspend fun getGifts(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String
+    ): Response<List<com.example.edukid_android.models.GiftResponse>>
+
+    @POST("parents/{parentId}/kids/{kidId}/gifts")
+    suspend fun createGift(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Body request: CreateGiftRequest
+    ): Response<ResponseBody>
+
+    @DELETE("parents/{parentId}/kids/{kidId}/gifts/{giftId}")
+    suspend fun deleteGift(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Path("giftId") giftId: String
+    ): Response<ResponseBody>
+
+    @POST("parents/{parentId}/kids/{kidId}/gifts/{giftId}/buy")
+    suspend fun buyGift(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Path("giftId") giftId: String
+    ): Response<ChildResponse>
 
     @POST("parents/{parentId}/kids/{kidId}/quizzes")
     suspend fun generateQuizBasedOnNeeds(
