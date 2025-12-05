@@ -89,6 +89,8 @@ data class ChildResponse(
     val progressionLevel: Int? = 1,
     @SerializedName("inventory")
     val inventory: List<InventoryItemResponse>? = emptyList(),
+    @SerializedName("quests")
+    val quests: List<QuestResponse>? = emptyList(),
     @SerializedName("shopCatalog")
     val shopCatalog: List<ShopItemResponse>? = emptyList()
 ) {
@@ -105,6 +107,7 @@ data class ChildResponse(
             lifetimeScore = this.lifetimeScore ?: 0,
             progressionLevel = this.progressionLevel ?: 1,
             inventory = this.inventory?.map { it.toInventoryItem() } ?: emptyList(),
+            quests = this.quests?.map { it.toQuest() } ?: emptyList(),
             shopCatalog = this.shopCatalog?.map { it.toShopItem() } ?: emptyList()
         )
     }
@@ -258,6 +261,33 @@ data class QuestionResponse(
         }
     }
 }
+data class QuestResponse(
+    @SerializedName("_id")
+    val id: String,
+    val title: String?,
+    val description: String,
+    val progress: Int,
+    val target: Int,
+    val reward: Int,
+    val status: String,
+    val progressionLevel: Int
+) {
+    fun toQuest(): Quest {
+        return Quest(
+            id = id,
+            title = title,
+            description = description,
+            progress = progress,
+            target = target,
+            reward = reward,
+            status = status,
+            progressionLevel = progressionLevel
+        )
+    }
+}
+
+
+
 
 // QR Code response model
 data class QRCodeResponse(
