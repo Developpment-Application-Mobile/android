@@ -19,6 +19,7 @@ import com.example.edukid_android.screens.AddChildScreen
 import com.example.edukid_android.screens.ChildProfileQRScreen
 import com.example.edukid_android.screens.ChildQRLoginScreen
 import com.example.edukid_android.screens.ChildResultsScreen
+import com.example.edukid_android.screens.ChildReviewScreen
 import com.example.edukid_android.screens.ForgotPasswordScreen
 import com.example.edukid_android.screens.ResetPasswordScreen
 import com.example.edukid_android.screens.GamesScreen
@@ -80,15 +81,11 @@ class MainActivity : ComponentActivity() {
                     composable("parentLogin") { 
                         ParentSignInScreen(
                             navController = navController,
-                            onSignUpClick = {
-                                navController.navigate("parentSignup")
-                            },
                             onForgotPasswordClick = {
                                 navController.navigate("forgotPassword")
                             },
                             onLoginSuccess = { token, parent ->
                                 // Store the access token and parent data
-                                accessToken = token
                                 currentParent = parent
                                 // Navigate to parent dashboard
                                 navController.navigate("parentDashboard") {
@@ -100,7 +97,6 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("forgotPassword") {
                         ForgotPasswordScreen(
-                            navController = navController,
                             onBackClick = {
                                 navController.popBackStack()
                             }
@@ -114,7 +110,6 @@ class MainActivity : ComponentActivity() {
                     ) { backStackEntry ->
                         val token = backStackEntry.arguments?.getString("token") ?: ""
                         ResetPasswordScreen(
-                            navController = navController,
                             token = token,
                             onBackClick = {
                                 navController.navigate("parentLogin") {
@@ -130,7 +125,6 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("childLogin") { 
                         ChildQRLoginScreen(
-                            navController = navController,
                             onQRScanned = { child ->
                                 currentChild = child
                                 navController.navigate("childHome") {
@@ -150,9 +144,6 @@ class MainActivity : ComponentActivity() {
                                 onQuizClick = { quiz ->
                                     currentQuiz = quiz
                                     navController.navigate("quizPlay")
-                                },
-                                onChildUpdate = { updatedChild ->
-                                    currentChild = updatedChild
                                 }
                             )
                         } ?: run {
@@ -167,8 +158,7 @@ class MainActivity : ComponentActivity() {
                     composable("childGames") {
                         currentChild?.let { child ->
                             GamesScreen(
-                                navController = navController,
-                                child = child
+                                navController = navController
                             )
                         } ?: run {
                             // If no child data, navigate back to login
@@ -246,10 +236,6 @@ class MainActivity : ComponentActivity() {
                                 onBackClick = {
                                     navController.popBackStack()
                                 },
-                                onGenerateQuizClick = { subject, difficulty, numQuestions, customTopic ->
-                                    // TODO: Implement quiz generation logic
-                                    // For now, just navigate back or show a message
-                                },
                                 onViewResultsClick = {
                                     navController.navigate("childResults/$childId")
                                 },
@@ -265,6 +251,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onGiftManagementClick = {
                                     navController.navigate("giftManagement/$childId")
+                                },
+                                onViewReviewClick = {
+                                    navController.navigate("childReview/$childId")
                                 }
                             )
                         } else {
@@ -286,6 +275,30 @@ class MainActivity : ComponentActivity() {
                         if (child != null) {
                             ChildResultsScreen(
                                 child = child,
+                                onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        } else {
+                            // If child not found, navigate back
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+                    composable(
+                        route = "childReview/{childId}",
+                        arguments = listOf(
+                            navArgument("childId") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val childId = backStackEntry.arguments?.getString("childId")
+                        val child = currentParent?.children?.find { it.id == childId }
+                        
+                        if (child != null) {
+                            ChildReviewScreen(
+                                child = child,
+                                parentId = currentParent?.id,
                                 onBackClick = {
                                     navController.popBackStack()
                                 }
@@ -339,10 +352,8 @@ class MainActivity : ComponentActivity() {
 
                     composable("parentSignup") { 
                         ParentSignUpScreen(
-                            navController = navController,
                             onSignUpSuccess = { token, parent ->
                                 // Store the access token and parent data
-                                accessToken = token
                                 currentParent = parent
                                 // Navigate to parent dashboard
                                 navController.navigate("parentDashboard") {
@@ -378,7 +389,6 @@ class MainActivity : ComponentActivity() {
                             onBackClick = { navController.popBackStack() },
                             onLogoutClick = {
                                 currentParent = null
-                                accessToken = null
                                 PreferencesManager.clearAll(this@MainActivity)
                                 navController.navigate("welcome") {
                                     popUpTo(0) { inclusive = true }

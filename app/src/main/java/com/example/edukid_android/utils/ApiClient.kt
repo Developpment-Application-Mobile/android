@@ -529,5 +529,30 @@ object ApiClient {
             Result.failure(e)
         }
     }
+
+    // Get child review with AI-generated analysis
+    suspend fun getChildReview(
+        parentId: String,
+        kidId: String
+    ): Result<com.example.edukid_android.models.ChildReviewResponse> {
+        return try {
+            android.util.Log.d("ApiClient", "getChildReview - parentId: $parentId, kidId: $kidId")
+            val response = apiService.getChildReview(parentId, kidId, emptyMap())
+            android.util.Log.d("ApiClient", "getChildReview - Response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                android.util.Log.d("ApiClient", "getChildReview - Success! Response body received")
+                android.util.Log.d("ApiClient", "getChildReview - pdfBase64 present: ${body.pdfBase64 != null}, length: ${body.pdfBase64?.length ?: 0}")
+                Result.success(body)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Failed to fetch child review: ${response.code()}"
+                android.util.Log.e("ApiClient", "getChildReview - Failed: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ApiClient", "getChildReview - Exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
 }
 

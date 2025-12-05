@@ -270,3 +270,73 @@ data class QRChildInfo(
     val id: String
 )
 
+// Child Review response models
+data class PerformanceByTopicResponse(
+    val topic: String? = null,
+    val quizzesCompleted: Int? = 0,
+    val averageScore: Double? = 0.0,
+    val highestScore: Int? = 0,
+    val lowestScore: Int? = 0
+) {
+    fun toPerformanceByTopic(): PerformanceByTopic {
+        return PerformanceByTopic(
+            topic = this.topic ?: "",
+            quizzesCompleted = this.quizzesCompleted ?: 0,
+            averageScore = this.averageScore ?: 0.0,
+            highestScore = this.highestScore ?: 0,
+            lowestScore = this.lowestScore ?: 0
+        )
+    }
+}
+
+data class ChildReviewResponse(
+    val childName: String? = null,
+    val childAge: Int? = 0,
+    val childLevel: String? = null,
+    val progressionLevel: Int? = 1,
+    val totalQuizzes: Int? = 0,
+    val overallAverage: Double? = 0.0,
+    val lifetimeScore: Int? = 0,
+    val currentScore: Int? = 0,
+    val performanceByTopic: List<PerformanceByTopicResponse>? = emptyList(),
+    val strengths: String? = null,
+    val weaknesses: String? = null,
+    val recommendations: String? = null,  // Changed from List<String> to String
+    val summary: String? = null,
+    val generatedAt: String? = null,
+    val pdfBase64: String? = null
+) {
+    fun toChildReview(): ChildReview {
+        // Split recommendations string by newlines and filter out empty lines
+        val recommendationsList = this.recommendations
+            ?.split("\n")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?.map { 
+                // Remove leading numbers and dots/dashes if present (e.g., "1. " or "- ")
+                it.replaceFirst(Regex("^\\d+\\.\\s*"), "")
+                  .replaceFirst(Regex("^-\\s*"), "")
+                  .trim()
+            }
+            ?: emptyList()
+        
+        return ChildReview(
+            childName = this.childName ?: "",
+            childAge = this.childAge ?: 0,
+            childLevel = this.childLevel ?: "",
+            progressionLevel = this.progressionLevel ?: 1,
+            totalQuizzes = this.totalQuizzes ?: 0,
+            overallAverage = this.overallAverage ?: 0.0,
+            lifetimeScore = this.lifetimeScore ?: 0,
+            currentScore = this.currentScore ?: 0,
+            performanceByTopic = this.performanceByTopic?.map { it.toPerformanceByTopic() } ?: emptyList(),
+            strengths = this.strengths ?: "",
+            weaknesses = this.weaknesses ?: "",
+            recommendations = recommendationsList,
+            summary = this.summary ?: "",
+            generatedAt = this.generatedAt ?: "",
+            pdfBase64 = this.pdfBase64
+        )
+    }
+}
+
