@@ -21,8 +21,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-//    private const val BASE_URL = "https://tractile-trang-adaptively.ngrok-free.dev/"
-    private const val BASE_URL = "https://accessorial-zaida-soggily.ngrok-free.dev/"
+   private const val BASE_URL = "https://tractile-trang-adaptively.ngrok-free.dev/"
+   // private const val BASE_URL = "https://accessorial-zaida-soggily.ngrok-free.dev/"
 
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -529,28 +529,32 @@ object ApiClient {
             Result.failure(e)
         }
     }
-
-    // Get child review with AI-generated analysis
-    suspend fun getChildReview(
+    /**
+     * Track progress for a quest (e.g. game completion)
+     */
+    suspend fun trackQuestProgress(
         parentId: String,
-        kidId: String
-    ): Result<com.example.edukid_android.models.ChildReviewResponse> {
+        kidId: String,
+        questType: String,
+        increment: Int = 1,
+        points: Int = 0,
+        isPerfect: Boolean = false
+    ): Result<Unit> {
         return try {
-            android.util.Log.d("ApiClient", "getChildReview - parentId: $parentId, kidId: $kidId")
-            val response = apiService.getChildReview(parentId, kidId, emptyMap())
-            android.util.Log.d("ApiClient", "getChildReview - Response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
-            if (response.isSuccessful && response.body() != null) {
-                val body = response.body()!!
-                android.util.Log.d("ApiClient", "getChildReview - Success! Response body received")
-                android.util.Log.d("ApiClient", "getChildReview - pdfBase64 present: ${body.pdfBase64 != null}, length: ${body.pdfBase64?.length ?: 0}")
-                Result.success(body)
+            val request = mapOf(
+                "questType" to questType,
+                "progressIncrement" to increment,
+                "pointsEarned" to points,
+                "isPerfectScore" to isPerfect
+            )
+            val response = apiService.trackQuestProgress(parentId, kidId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
             } else {
-                val errorMessage = response.errorBody()?.string() ?: "Failed to fetch child review: ${response.code()}"
-                android.util.Log.e("ApiClient", "getChildReview - Failed: $errorMessage")
+                val errorMessage = response.errorBody()?.string() ?: "Track quest progress failed: ${response.code()}"
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
-            android.util.Log.e("ApiClient", "getChildReview - Exception: ${e.message}", e)
             Result.failure(e)
         }
     }

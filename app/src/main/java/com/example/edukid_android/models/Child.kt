@@ -1,9 +1,6 @@
 package com.example.edukid_android.models
 
 
-
-
-
 data class Child(
     val id: String?,
     val name: String,
@@ -16,6 +13,7 @@ data class Child(
     val progressionLevel: Int = 1,
     val inventory: List<InventoryItem> = emptyList(),
     val shopCatalog: List<ShopItem> = emptyList(),
+    val quests: List<Quest> = emptyList(),
     val parentId: String? = null
 ) {
     // ✅ Get only completed quizzes

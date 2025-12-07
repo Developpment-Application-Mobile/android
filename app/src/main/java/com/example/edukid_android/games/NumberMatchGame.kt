@@ -26,7 +26,9 @@ import kotlin.random.Random
 
 @Composable
 fun NumberMatchGame(
-    navController: NavController? = null
+    navController: NavController? = null,
+    parentId: String? = null,
+    kidId: String? = null
 ) {
     var currentRound by remember { mutableStateOf(1) }
     var score by remember { mutableStateOf(0) }
@@ -50,6 +52,14 @@ fun NumberMatchGame(
                 showFeedback = false
             } else {
                 gameComplete = true
+                if (parentId != null && kidId != null) {
+                    com.example.edukid_android.utils.ApiClient.trackQuestProgress(
+                        parentId = parentId,
+                        kidId = kidId,
+                        questType = "COMPLETE_GAMES",
+                        increment = 1
+                    )
+                }
             }
         }
     }

@@ -12,6 +12,7 @@ import com.example.edukid_android.models.UpdateParentRequest
 import com.example.edukid_android.models.GenerateQuizRequest
 import com.example.edukid_android.models.SubmitAnswersRequest
 import com.example.edukid_android.models.ForgotPasswordRequest
+import com.example.edukid_android.models.QuestResponse
 import com.example.edukid_android.models.ResetPasswordRequest
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -126,6 +127,37 @@ interface ApiService {
     suspend fun getParent(
         @Path("id") id: String
     ): Response<ParentResponse>
+
+    // ================= QUESTS =================
+
+    @GET("parents/{parentId}/kids/{kidId}/quests")
+    suspend fun getQuests(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String
+    ): Response<List<QuestResponse>>
+
+    @POST("parents/{parentId}/kids/{kidId}/quests/{questId}/complete")
+    suspend fun completeQuest(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Path("questId") questId: String
+    ): Response<QuestResponse>
+
+    @POST("parents/{parentId}/kids/{kidId}/quests/{questId}/claim")
+    suspend fun claimQuest(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Path("questId") questId: String
+    ): Response<ChildResponse>
+
+    @POST("parents/{parentId}/kids/{kidId}/quests/progress")
+    suspend fun trackQuestProgress(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Body request: Map<String, Any>
+    ): Response<Unit>
+
+    companion object
 
     @POST("parents/{parentId}/kids/{kidId}/review")
     suspend fun getChildReview(
