@@ -301,25 +301,12 @@ data class ChildReviewResponse(
     val performanceByTopic: List<PerformanceByTopicResponse>? = emptyList(),
     val strengths: String? = null,
     val weaknesses: String? = null,
-    val recommendations: String? = null,  // Changed from List<String> to String
+    val recommendations: List<String>? = null,  // Changed from String to List<String>
     val summary: String? = null,
     val generatedAt: String? = null,
     val pdfBase64: String? = null
 ) {
     fun toChildReview(): ChildReview {
-        // Split recommendations string by newlines and filter out empty lines
-        val recommendationsList = this.recommendations
-            ?.split("\n")
-            ?.map { it.trim() }
-            ?.filter { it.isNotBlank() }
-            ?.map { 
-                // Remove leading numbers and dots/dashes if present (e.g., "1. " or "- ")
-                it.replaceFirst(Regex("^\\d+\\.\\s*"), "")
-                  .replaceFirst(Regex("^-\\s*"), "")
-                  .trim()
-            }
-            ?: emptyList()
-        
         return ChildReview(
             childName = this.childName ?: "",
             childAge = this.childAge ?: 0,
@@ -332,7 +319,7 @@ data class ChildReviewResponse(
             performanceByTopic = this.performanceByTopic?.map { it.toPerformanceByTopic() } ?: emptyList(),
             strengths = this.strengths ?: "",
             weaknesses = this.weaknesses ?: "",
-            recommendations = recommendationsList,
+            recommendations = this.recommendations ?: emptyList(),  // Directly use the list
             summary = this.summary ?: "",
             generatedAt = this.generatedAt ?: "",
             pdfBase64 = this.pdfBase64
