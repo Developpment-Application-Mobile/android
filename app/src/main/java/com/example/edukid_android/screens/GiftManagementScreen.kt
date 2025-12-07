@@ -422,11 +422,10 @@ fun GiftManagementScreen(
         ) {
             LaunchedEffect(err) {
                 kotlinx.coroutines.delay(4000)
-                error = null
             }
             Snackbar(
                 action = {
-                    TextButton(onClick = { error = null }) {
+                    TextButton(onClick = { }) {
                         Text("Dismiss", color = Color.White)
                     }
                 },
@@ -448,7 +447,6 @@ fun GiftManagementScreen(
         ) {
             LaunchedEffect(msg) {
                 kotlinx.coroutines.delay(3000)
-                success = null
             }
             Snackbar(
                 containerColor = Color(0xFF43A047),

@@ -443,7 +443,7 @@ fun ParentProfileScreen(
     // Delete Confirmation Dialog
     showDeleteDialog?.let { child ->
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
+            onDismissRequest = { },
             containerColor = Color.White,
             shape = RoundedCornerShape(24.dp),
             title = {
@@ -477,7 +477,6 @@ fun ParentProfileScreen(
                 Button(
                     onClick = {
                         onDeleteChild(child)
-                        showDeleteDialog = null
                     }, colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFF5252)
                     ), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
@@ -492,7 +491,7 @@ fun ParentProfileScreen(
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = { showDeleteDialog = null },
+                    onClick = { },
                     border = androidx.compose.foundation.BorderStroke(
                         2.dp, Color(0xFFE0E0E0)
                     ),

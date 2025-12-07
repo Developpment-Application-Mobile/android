@@ -37,7 +37,6 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.edukid_android.R
 import com.example.edukid_android.models.Child
 import com.example.edukid_android.models.Quiz
-import com.example.edukid_android.models.QuizType
 import com.example.edukid_android.utils.ApiClient
 import com.example.edukid_android.utils.getAvatarResource
 import kotlinx.coroutines.launch
@@ -47,10 +46,10 @@ fun ChildProfileQRScreen(
     child: Child,
     parentId: String? = null,
     onBackClick: () -> Unit = {},
-    onGenerateQuizClick: (String, String, Int, String) -> Unit = { _, _, _, _ -> },
     onViewResultsClick: () -> Unit = {},
     onQuizGenerated: (Quiz) -> Unit = {},
-    onGiftManagementClick: () -> Unit = {}
+    onGiftManagementClick: () -> Unit = {},
+    onViewReviewClick: () -> Unit = {}
 ) {
     var showQRDialog by remember { mutableStateOf(false) }
     var childState by remember { mutableStateOf(child) }
@@ -274,71 +273,103 @@ fun ChildProfileQRScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Action Buttons Row
-                Row(
+                // Action Buttons Grid (2x2)
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Button(
-                        onClick = {
-                            if (parentId != null && childState.id != null) {
-                                isLoadingQR = true
-                                qrError = null
-                                scope.launch {
-                                    val result = ApiClient.getQRCode(parentId, childState.id!!)
-                                    result.onSuccess { qrResponse ->
-                                        // Decode base64 image
-                                        val base64String = qrResponse.qr
-                                        val base64Image = if (base64String.startsWith("data:image")) {
-                                            base64String.substringAfter(",")
-                                        } else {
-                                            base64String
-                                        }
-                                        
-                                        try {
-                                            val imageBytes = Base64.decode(base64Image, Base64.DEFAULT)
-                                            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                                            qrCodeBitmap = bitmap
-                                            showQRDialog = true
-                                            isLoadingQR = false
-                                        } catch (e: Exception) {
-                                            qrError = "Failed to decode QR code: ${e.message}"
-                                            isLoadingQR = false
-                                        }
-                                    }.onFailure { exception ->
-                                        qrError = exception.message ?: "Failed to load QR code"
-                                        isLoadingQR = false
-                                    }
-                                }
-                            } else {
-                                qrError = "Missing parent or child ID"
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        enabled = !isLoadingQR && parentId != null && child.id != null
+                    // First row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        if (isLoadingQR) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color(0xFFAF7EE7),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
+                        Button(
+                            onClick = {
+                                if (parentId != null && childState.id != null) {
+                                    isLoadingQR = true
+                                    qrError = null
+                                    scope.launch {
+                                        val result = ApiClient.getQRCode(parentId, childState.id!!)
+                                        result.onSuccess { qrResponse ->
+                                            // Decode base64 image
+                                            val base64String = qrResponse.qr
+                                            val base64Image = if (base64String.startsWith("data:image")) {
+                                                base64String.substringAfter(",")
+                                            } else {
+                                                base64String
+                                            }
+                                            
+                                            try {
+                                                val imageBytes = Base64.decode(base64Image, Base64.DEFAULT)
+                                                val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                                                qrCodeBitmap = bitmap
+                                                showQRDialog = true
+                                                isLoadingQR = false
+                                            } catch (e: Exception) {
+                                                qrError = "Failed to decode QR code: ${e.message}"
+                                                isLoadingQR = false
+                                            }
+                                        }.onFailure { exception ->
+                                            qrError = exception.message ?: "Failed to load QR code"
+                                            isLoadingQR = false
+                                        }
+                                    }
+                                } else {
+                                    qrError = "Missing parent or child ID"
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            enabled = !isLoadingQR && parentId != null && child.id != null
+                        ) {
+                            if (isLoadingQR) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color(0xFFAF7EE7),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "📱",
+                                        fontSize = 20.sp
+                                    )
+                                    Text(
+                                        text = "Show QR",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF2E2E2E)
+                                    )
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = onViewResultsClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    text = "📱",
+                                    text = "📊",
                                     fontSize = 20.sp
                                 )
                                 Text(
-                                    text = "Show QR",
+                                    text = "Results",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF2E2E2E)
@@ -347,55 +378,61 @@ fun ChildProfileQRScreen(
                         }
                     }
 
-                    Button(
-                        onClick = onViewResultsClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(16.dp)
+                    // Second row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Button(
+                            onClick = onGiftManagementClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text(
-                                text = "📊",
-                                fontSize = 20.sp
-                            )
-                            Text(
-                                text = "Results",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF2E2E2E)
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "🎁",
+                                    fontSize = 20.sp
+                                )
+                                Text(
+                                    text = "Gifts",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E2E2E)
+                                )
+                            }
                         }
-                    }
 
-                    Button(
-                        onClick = onGiftManagementClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Button(
+                            onClick = onViewReviewClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text(
-                                text = "🎁",
-                                fontSize = 20.sp
-                            )
-                            Text(
-                                text = "Gifts",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF2E2E2E)
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "📋",
+                                    fontSize = 20.sp
+                                )
+                                Text(
+                                    text = "Review",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E2E2E)
+                                )
+                            }
                         }
                     }
                 }
@@ -917,8 +954,6 @@ fun ChildProfileQRScreen(
             child = childState,
             qrBitmap = qrCodeBitmap,
             onDismiss = { 
-                showQRDialog = false
-                qrCodeBitmap = null
                 qrError = null
             }
         )
@@ -974,11 +1009,10 @@ fun ChildProfileQRScreen(
         ) {
             LaunchedEffect(error) {
                 kotlinx.coroutines.delay(4000)
-                qrError = null
             }
             Snackbar(
                 action = {
-                    TextButton(onClick = { qrError = null }) {
+                    TextButton(onClick = { }) {
                         Text("Dismiss", color = Color.White)
                     }
                 },
@@ -1003,11 +1037,10 @@ fun ChildProfileQRScreen(
         ) {
             LaunchedEffect(error) {
                 kotlinx.coroutines.delay(4000)
-                generateError = null
             }
             Snackbar(
                 action = {
-                    TextButton(onClick = { generateError = null }) {
+                    TextButton(onClick = { }) {
                         Text("Dismiss", color = Color.White)
                     }
                 },
@@ -1028,7 +1061,6 @@ fun ChildProfileQRScreen(
         ) {
             LaunchedEffect(msg) {
                 kotlinx.coroutines.delay(3000)
-                generateSuccess = null
             }
             Snackbar(
                 containerColor = Color(0xFF43A047),

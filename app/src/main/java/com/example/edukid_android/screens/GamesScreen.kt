@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.edukid_android.R
 import com.example.edukid_android.components.BottomNavigationBar
-import com.example.edukid_android.models.Child
 
 data class Game(
     val id: String,
@@ -41,8 +40,7 @@ data class Game(
 
 @Composable
 fun GamesScreen(
-    navController: NavController? = null,
-    child: Child? = null
+    navController: NavController? = null
 ) {
     val games = remember {
         listOf(

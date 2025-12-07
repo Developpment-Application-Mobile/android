@@ -28,14 +28,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import com.example.edukid_android.R
 import com.example.edukid_android.utils.ApiClient
 import kotlinx.coroutines.launch
 
 @Composable
 fun ParentSignUpScreen(
-    navController: NavController,
     onSignUpClick: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onSignInClick: () -> Unit = {},
     onSignUpSuccess: (String, com.example.edukid_android.models.Parent) -> Unit = { _, _ -> }

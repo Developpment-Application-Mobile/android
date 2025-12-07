@@ -39,8 +39,7 @@ fun ParentDashboardScreen(
     parent: Parent?,
     onAddChildClick: () -> Unit = {},
     onChildClick: (Child) -> Unit = {},
-    onEditProfileClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {}
+    onEditProfileClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier

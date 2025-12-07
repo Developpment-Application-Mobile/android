@@ -300,3 +300,60 @@ data class QRChildInfo(
     val id: String
 )
 
+// Child Review response models
+data class PerformanceByTopicResponse(
+    val topic: String? = null,
+    val quizzesCompleted: Int? = 0,
+    val averageScore: Double? = 0.0,
+    val highestScore: Int? = 0,
+    val lowestScore: Int? = 0
+) {
+    fun toPerformanceByTopic(): PerformanceByTopic {
+        return PerformanceByTopic(
+            topic = this.topic ?: "",
+            quizzesCompleted = this.quizzesCompleted ?: 0,
+            averageScore = this.averageScore ?: 0.0,
+            highestScore = this.highestScore ?: 0,
+            lowestScore = this.lowestScore ?: 0
+        )
+    }
+}
+
+data class ChildReviewResponse(
+    val childName: String? = null,
+    val childAge: Int? = 0,
+    val childLevel: String? = null,
+    val progressionLevel: Int? = 1,
+    val totalQuizzes: Int? = 0,
+    val overallAverage: Double? = 0.0,
+    val lifetimeScore: Int? = 0,
+    val currentScore: Int? = 0,
+    val performanceByTopic: List<PerformanceByTopicResponse>? = emptyList(),
+    val strengths: String? = null,
+    val weaknesses: String? = null,
+    val recommendations: List<String>? = null,  // Changed from String to List<String>
+    val summary: String? = null,
+    val generatedAt: String? = null,
+    val pdfBase64: String? = null
+) {
+    fun toChildReview(): ChildReview {
+        return ChildReview(
+            childName = this.childName ?: "",
+            childAge = this.childAge ?: 0,
+            childLevel = this.childLevel ?: "",
+            progressionLevel = this.progressionLevel ?: 1,
+            totalQuizzes = this.totalQuizzes ?: 0,
+            overallAverage = this.overallAverage ?: 0.0,
+            lifetimeScore = this.lifetimeScore ?: 0,
+            currentScore = this.currentScore ?: 0,
+            performanceByTopic = this.performanceByTopic?.map { it.toPerformanceByTopic() } ?: emptyList(),
+            strengths = this.strengths ?: "",
+            weaknesses = this.weaknesses ?: "",
+            recommendations = this.recommendations ?: emptyList(),  // Directly use the list
+            summary = this.summary ?: "",
+            generatedAt = this.generatedAt ?: "",
+            pdfBase64 = this.pdfBase64
+        )
+    }
+}
+

@@ -33,12 +33,10 @@ import com.example.edukid_android.utils.QRScannerComposable
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 
 @Composable
 fun ChildQRLoginScreen(
-    navController: NavController? = null,
     onQRScanned: (Child) -> Unit = {},
     onBackClick: () -> Unit = {}
 
