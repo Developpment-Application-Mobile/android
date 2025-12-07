@@ -26,14 +26,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import com.example.edukid_android.R
 import com.example.edukid_android.utils.ApiClient
 import kotlinx.coroutines.launch
 
 @Composable
 fun ResetPasswordScreen(
-    navController: NavController,
     token: String,
     onBackClick: () -> Unit = {},
     onResetSuccess: () -> Unit = {}

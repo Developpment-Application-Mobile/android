@@ -37,9 +37,39 @@ fun ChildResultsScreen(
     onBackClick: () -> Unit = {}
 ) {
     val completedQuizzes = remember(child) { child.getCompletedQuizzes() }
-    val averageScore = remember(completedQuizzes) {
-        if (completedQuizzes.isNotEmpty()) {
-            completedQuizzes.mapNotNull { it.score }.average().toInt()
+    
+    // Filter states
+    var selectedTopic by remember { mutableStateOf<String?>(null) }
+    var sortBy by remember { mutableStateOf("date_newest") } // date_newest, date_oldest, points_high, points_low
+    var showFilterMenu by remember { mutableStateOf(false) }
+    
+    // Get unique topics
+    val topics = remember(completedQuizzes) {
+        completedQuizzes.map { it.type.name }.distinct().sorted()
+    }
+    
+    // Apply filters and sorting
+    val filteredQuizzes = remember(completedQuizzes, selectedTopic, sortBy) {
+        var filtered = completedQuizzes
+        
+        // Filter by topic
+        if (selectedTopic != null) {
+            filtered = filtered.filter { it.type.name == selectedTopic }
+        }
+        
+        // Sort
+        when (sortBy) {
+            "date_newest" -> filtered.sortedByDescending { it.id } // Assuming higher ID = newer
+            "date_oldest" -> filtered.sortedBy { it.id }
+            "points_high" -> filtered.sortedByDescending { it.score ?: 0 }
+            "points_low" -> filtered.sortedBy { it.score ?: 0 }
+            else -> filtered
+        }
+    }
+    
+    val averageScore = remember(filteredQuizzes) {
+        if (filteredQuizzes.isNotEmpty()) {
+            filteredQuizzes.mapNotNull { it.score }.average().toInt()
         } else {
             0
         }
@@ -304,17 +334,299 @@ fun ChildResultsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Completed Quizzes Section
-                Text(
-                    text = "📚 Completed Quizzes",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 16.dp),
-                    letterSpacing = 0.5.sp
-                )
+                // Filter Section Header with Premium Design
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.White.copy(alpha = 0.05f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFFAF7EE7),
+                                            Color(0xFF7E57C2)
+                                        )
+                                    ),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "📚",
+                                fontSize = 20.sp
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(12.dp))
+                        
+                        Column {
+                            Text(
+                                text = "Completed Quizzes",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                letterSpacing = 0.5.sp
+                            )
+                            if (selectedTopic != null || sortBy != "date_newest") {
+                                Text(
+                                    text = "${filteredQuizzes.size} of ${completedQuizzes.size} shown",
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Filter Toggle Button
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(
+                                brush = if (showFilterMenu) {
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFFAF7EE7),
+                                            Color(0xFF7E57C2)
+                                        )
+                                    )
+                                } else {
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            Color.White.copy(alpha = 0.2f),
+                                            Color.White.copy(alpha = 0.1f)
+                                        )
+                                    )
+                                },
+                                shape = CircleShape
+                            )
+                            .border(
+                                width = 2.dp,
+                                color = if (showFilterMenu) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.2f),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        IconButton(
+                            onClick = { showFilterMenu = !showFilterMenu }
+                        ) {
+                            Text(
+                                text = if (showFilterMenu) "✕" else "⚙️",
+                                fontSize = 18.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+                
+                // Premium Filter Menu with Animation
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showFilterMenu,
+                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.White.copy(alpha = 0.98f)
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color(0xFFF8F5FF),
+                                                Color.White
+                                            )
+                                        )
+                                    )
+                                    .padding(24.dp)
+                            ) {
+                                // Topic Filter Section
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(
+                                                color = Color(0xFFAF7EE7).copy(alpha = 0.15f),
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = "🏷️", fontSize = 16.sp)
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Filter by Topic",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF2E2E2E)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                // Topic Chips with Premium Design
+                                androidx.compose.foundation.layout.FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // All Topics chip
+                                    PremiumFilterChip(
+                                        text = "All Topics",
+                                        selected = selectedTopic == null,
+                                        onClick = { selectedTopic = null },
+                                        icon = "📚"
+                                    )
+                                    
+                                    topics.forEach { topic ->
+                                        PremiumFilterChip(
+                                            text = topic,
+                                            selected = selectedTopic == topic,
+                                            onClick = { selectedTopic = if (selectedTopic == topic) null else topic },
+                                            icon = getQuizTypeEmoji(topic)
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(24.dp))
+                                
+                                // Decorative Divider
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .background(
+                                            brush = Brush.horizontalGradient(
+                                                colors = listOf(
+                                                    Color.Transparent,
+                                                    Color(0xFFAF7EE7).copy(alpha = 0.3f),
+                                                    Color.Transparent
+                                                )
+                                            )
+                                        )
+                                )
+                                
+                                Spacer(modifier = Modifier.height(24.dp))
+                                
+                                // Sort By Section
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(
+                                                color = Color(0xFF7E57C2).copy(alpha = 0.15f),
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = "🔄", fontSize = 16.sp)
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "Sort By",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF2E2E2E)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                // Sort Options with Premium Design
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    PremiumSortOption(
+                                        icon = "📅",
+                                        text = "Newest First",
+                                        selected = sortBy == "date_newest",
+                                        onClick = { sortBy = "date_newest" }
+                                    )
+                                    PremiumSortOption(
+                                        icon = "📅",
+                                        text = "Oldest First",
+                                        selected = sortBy == "date_oldest",
+                                        onClick = { sortBy = "date_oldest" }
+                                    )
+                                    PremiumSortOption(
+                                        icon = "⬆️",
+                                        text = "Highest Points",
+                                        selected = sortBy == "points_high",
+                                        onClick = { sortBy = "points_high" }
+                                    )
+                                    PremiumSortOption(
+                                        icon = "⬇️",
+                                        text = "Lowest Points",
+                                        selected = sortBy == "points_low",
+                                        onClick = { sortBy = "points_low" }
+                                    )
+                                }
+                                
+                                // Clear Filters Button
+                                if (selectedTopic != null || sortBy != "date_newest") {
+                                    Spacer(modifier = Modifier.height(20.dp))
+                                    
+                                    Button(
+                                        onClick = {
+                                            selectedTopic = null
+                                            sortBy = "date_newest"
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFFFF6B6B).copy(alpha = 0.1f),
+                                            contentColor = Color(0xFFFF6B6B)
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(
+                                            text = "✕ Clear All Filters",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
-                if (completedQuizzes.isEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (filteredQuizzes.isEmpty()) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(20.dp),
@@ -334,7 +646,7 @@ fun ChildResultsScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "No Completed Quizzes Yet",
+                                text = if (completedQuizzes.isEmpty()) "No Completed Quizzes Yet" else "No Quizzes Match Filter",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF2E2E2E),
@@ -342,7 +654,10 @@ fun ChildResultsScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "${child.name} hasn't completed any quizzes yet. Start a quiz to see results here!",
+                                text = if (completedQuizzes.isEmpty()) 
+                                    "${child.name} hasn't completed any quizzes yet. Start a quiz to see results here!" 
+                                else 
+                                    "Try adjusting your filters to see more results.",
                                 fontSize = 14.sp,
                                 color = Color(0xFF666666),
                                 textAlign = TextAlign.Center,
@@ -351,7 +666,7 @@ fun ChildResultsScreen(
                         }
                     }
                 } else {
-                    completedQuizzes.forEach { quiz ->
+                    filteredQuizzes.forEach { quiz ->
                         QuizResultCard(quiz = quiz)
                         Spacer(modifier = Modifier.height(12.dp))
                     }
@@ -360,6 +675,204 @@ fun ChildResultsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+}
+
+@Composable
+fun PremiumFilterChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: String
+) {
+    val scale = remember { Animatable(1f) }
+    
+    LaunchedEffect(selected) {
+        if (selected) {
+            scale.animateTo(
+                targetValue = 1.05f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
+        } else {
+            scale.animateTo(1f)
+        }
+    }
+    
+    Box(
+        modifier = Modifier
+            .scale(scale.value)
+            .background(
+                brush = if (selected) {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFFAF7EE7),
+                            Color(0xFF7E57C2)
+                        )
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFFF5F5F5),
+                            Color(0xFFEEEEEE)
+                        )
+                    )
+                },
+                shape = RoundedCornerShape(16.dp)
+            )
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) Color.White.copy(alpha = 0.5f) else Color(0xFFE0E0E0),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Button(
+            onClick = onClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Transparent,
+                contentColor = if (selected) Color.White else Color(0xFF2E2E2E)
+            ),
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.height(IntrinsicSize.Min)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = icon,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = text,
+                    fontSize = 14.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                )
+                if (selected) {
+                    Text(
+                        text = "✓",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PremiumSortOption(
+    icon: String,
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = if (selected) {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFFAF7EE7).copy(alpha = 0.2f),
+                            Color(0xFF7E57C2).copy(alpha = 0.1f)
+                        )
+                    )
+                } else {
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Transparent
+                        )
+                    )
+                },
+                shape = RoundedCornerShape(12.dp)
+            )
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) Color(0xFFAF7EE7).copy(alpha = 0.5f) else Color(0xFFE0E0E0),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            color = if (selected) Color(0xFFAF7EE7).copy(alpha = 0.2f) else Color(0xFFF5F5F5),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = icon,
+                        fontSize = 18.sp
+                    )
+                }
+                
+                Text(
+                    text = text,
+                    fontSize = 15.sp,
+                    color = if (selected) Color(0xFF2E2E2E) else Color(0xFF666666),
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                )
+            }
+            
+            RadioButton(
+                selected = selected,
+                onClick = onClick,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = Color(0xFFAF7EE7),
+                    unselectedColor = Color(0xFFCCCCCC)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun SortOption(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = if (selected) Color(0xFFAF7EE7).copy(alpha = 0.15f) else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onClick,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = Color(0xFFAF7EE7)
+            )
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            color = if (selected) Color(0xFF2E2E2E) else Color(0xFF666666),
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

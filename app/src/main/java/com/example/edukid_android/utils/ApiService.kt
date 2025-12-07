@@ -159,5 +159,11 @@ interface ApiService {
 
     companion object
 
+    @POST("parents/{parentId}/kids/{kidId}/review")
+    suspend fun getChildReview(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Body body: Map<String, String> = emptyMap()
+    ): Response<com.example.edukid_android.models.ChildReviewResponse>
 }
 

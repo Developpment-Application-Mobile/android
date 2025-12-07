@@ -19,7 +19,6 @@ import androidx.navigation.NavController
 import com.example.edukid_android.components.GameCompletionDialog
 import com.example.edukid_android.components.GameHeader
 import kotlinx.coroutines.delay
-import kotlin.random.Random
 
 @Composable
 fun PatternPuzzleGame(
@@ -34,7 +33,7 @@ fun PatternPuzzleGame(
     var currentRound by remember { mutableStateOf(1) }
     var score by remember { mutableStateOf(0) }
     var pattern by remember { mutableStateOf(generatePattern(shapes, colors)) }
-    var options by remember { mutableStateOf(generatePatternOptions(pattern, shapes, colors)) }
+    var options by remember { mutableStateOf(generatePatternOptions(pattern, colors)) }
     var selectedOption by remember { mutableStateOf<Pair<String, Color>?>(null) }
     var showFeedback by remember { mutableStateOf(false) }
     var gameComplete by remember { mutableStateOf(false) }
@@ -47,7 +46,7 @@ fun PatternPuzzleGame(
             if (currentRound < totalRounds) {
                 currentRound++
                 pattern = generatePattern(shapes, colors)
-                options = generatePatternOptions(pattern, shapes, colors)
+                options = generatePatternOptions(pattern, colors)
                 selectedOption = null
                 showFeedback = false
             } else {
@@ -168,7 +167,7 @@ fun PatternPuzzleGame(
                     currentRound = 1
                     score = 0
                     pattern = generatePattern(shapes, colors)
-                    options = generatePatternOptions(pattern, shapes, colors)
+                    options = generatePatternOptions(pattern, colors)
                     selectedOption = null
                     showFeedback = false
                     gameComplete = false
@@ -229,7 +228,6 @@ fun generatePattern(shapes: List<String>, colors: List<Color>): List<Pair<String
 
 fun generatePatternOptions(
     pattern: List<Pair<String, Color>>,
-    shapes: List<String>,
     colors: List<Color>
 ): List<Pair<String, Color>> {
     val correctAnswer = pattern.last()
