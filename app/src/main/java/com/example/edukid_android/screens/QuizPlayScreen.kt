@@ -49,8 +49,7 @@ fun QuizPlayScreen(
     onExit: (() -> Unit)? = null,
     onQuizSubmitted: (() -> Unit)? = null,
     parentId: String? = null,
-    kidId: String? = null,
-    initialTotalScore: Int = 0
+    kidId: String? = null
 ) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
@@ -65,7 +64,7 @@ fun QuizPlayScreen(
     var currentIndex by remember { mutableStateOf(0) }
     var selectedOption by remember { mutableStateOf<Int?>(null) }
     var isAnswered by remember { mutableStateOf(false) }
-    var totalScore by remember { mutableStateOf(initialTotalScore) }
+    var totalScore by remember { mutableStateOf(quiz?.score ?: 0) }
     var correctCount by remember { mutableStateOf(0) }
     val perQuestionAnswer = remember(questions) { mutableStateListOf(*Array(questions.size) { null as Int? }) }
     val perQuestionCorrect = remember(questions) { mutableStateListOf(*Array(questions.size) { false }) }
@@ -677,19 +676,6 @@ fun QuizPlayScreen(
                                                         submitResult.fold(
                                                             onSuccess = {
                                                                 android.util.Log.d("QuizPlayScreen", "Quiz submitted successfully!")
-                                                                
-                                                                // Track quest progress
-                                                                launch {
-                                                                    ApiClient.trackQuestProgress(
-                                                                        parentId = parentId,
-                                                                        kidId = kidId,
-                                                                        questType = "COMPLETE_QUIZ",
-                                                                        increment = 1,
-                                                                        points = totalScore,
-                                                                        isPerfect = correctCount == questions.size
-                                                                    )
-                                                                }
-
                                                                 onQuizSubmitted?.invoke()
                                                                 onExit?.invoke() ?: navController?.popBackStack()
                                                             },
@@ -723,19 +709,6 @@ fun QuizPlayScreen(
                                                                 onSuccess = { childResponse ->
                                                                     android.util.Log.d("QuizPlayScreen", "Finish button - Quiz submitted successfully!")
                                                                     updatedChildScore = childResponse.toChild().Score
-
-                                                                    // Track quest progress
-                                                                    launch {
-                                                                        ApiClient.trackQuestProgress(
-                                                                            parentId = parentId,
-                                                                            kidId = kidId,
-                                                                            questType = "COMPLETE_QUIZ",
-                                                                            increment = 1,
-                                                                            points = totalScore,
-                                                                            isPerfect = correctCount == questions.size
-                                                                        )
-                                                                    }
-
                                                                     // Load gifts to show progress
                                                                     if (parentId != null && kidId != null) {
                                                                         scope.launch {

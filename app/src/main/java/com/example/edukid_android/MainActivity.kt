@@ -19,9 +19,6 @@ import com.example.edukid_android.screens.AddChildScreen
 import com.example.edukid_android.screens.ChildProfileQRScreen
 import com.example.edukid_android.screens.ChildQRLoginScreen
 import com.example.edukid_android.screens.ChildResultsScreen
-
-import com.example.edukid_android.screens.QuestsScreen
-
 import com.example.edukid_android.screens.ChildReviewScreen
 import com.example.edukid_android.screens.ForgotPasswordScreen
 import com.example.edukid_android.screens.ResetPasswordScreen
@@ -36,7 +33,6 @@ import com.example.edukid_android.screens.WelcomeScreen
 import com.example.edukid_android.ui.theme.EduKid_androidTheme
 import com.example.edukid_android.utils.PreferencesManager
 import com.example.edukid_android.games.*
-import com.example.edukid_android.utils.ApiClient.apiService
 
 class MainActivity : ComponentActivity() {
     private var deepLinkTokenState = mutableStateOf<String?>(null)
@@ -150,7 +146,6 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate("quizPlay")
                                 }
                             )
-
                         } ?: run {
                             // If no child data, navigate back to login
                             LaunchedEffect(Unit) {
@@ -174,39 +169,10 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-
-                    // ─────────────────────────────
-                    // QUESTS SCREEN FOR CHILD
-                    // ─────────────────────────────
-                    composable("questsScreen") {
-                        currentChild?.let { child ->
-                            QuestsScreen(
-                                parentId = child.parentId ?: "",
-                                kidId = child.id ?: "",
-                                apiService = apiService,
-                                onChildUpdate = { updatedChild ->
-                                    currentChild = updatedChild
-                                }
-                            )
-                        } ?: run {
-                            // If child is somehow missing, return to login
-                            LaunchedEffect(Unit) {
-                                navController.navigate("childLogin") {
-                                    popUpTo("childHome") { inclusive = true }
-                                }
-                            }
-                        }
-                    }
-
-
-
+                    
                     // Game Routes
                     composable("game/number_match") {
-                        NumberMatchGame(
-                            navController = navController,
-                            parentId = currentChild?.parentId,
-                            kidId = currentChild?.id
-                        )
+                        NumberMatchGame(navController = navController)
                     }
                     composable("game/math_challenge") {
                         MathChallengeGame(navController = navController)
@@ -221,11 +187,7 @@ class MainActivity : ComponentActivity() {
                         PatternPuzzleGame(navController = navController)
                     }
                     composable("game/color_match") {
-                        ColorMatchGame(
-                            navController = navController,
-                            parentId = currentChild?.parentId,
-                            kidId = currentChild?.id
-                        )
+                        ColorMatchGame(navController = navController)
                     }
                     composable("game/memory_cards") {
                         MemoryCardsGame(navController = navController)
@@ -244,13 +206,12 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onQuizSubmitted = {
                                     currentChild = currentChild?.let { child ->
-                                        val updatedQuizzes = child.quizzes.filter { it.id != quiz.id }
-                                        child.copy(quizzes = updatedQuizzes)
+                                        val updated = child.quizzes.filter { it.id != quiz.id }
+                                        child.copy(quizzes = updated)
                                     }
                                 },
                                 currentChild?.parentId,
-                                currentChild?.id,
-                                currentChild?.Score ?: 0
+                                currentChild?.id
                             )
                         } ?: run {
                             LaunchedEffect(Unit) {

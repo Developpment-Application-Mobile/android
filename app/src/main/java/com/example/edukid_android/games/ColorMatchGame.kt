@@ -34,9 +34,7 @@ data class ColorShape(
 
 @Composable
 fun ColorMatchGame(
-    navController: NavController? = null,
-    parentId: String? = null,
-    kidId: String? = null
+    navController: NavController? = null
 ) {
     val colors = listOf(
         ColorShape(Color(0xFFFF0000), "Red", "⬤"),
@@ -60,8 +58,6 @@ fun ColorMatchGame(
 
     val totalRounds = 15
 
-    val scope = rememberCoroutineScope()
-    
     LaunchedEffect(showFeedback) {
         if (showFeedback) {
             delay(1000)
@@ -74,15 +70,6 @@ fun ColorMatchGame(
                 showFeedback = false
             } else {
                 gameComplete = true
-                // Track progress
-                if (parentId != null && kidId != null) {
-                    com.example.edukid_android.utils.ApiClient.trackQuestProgress(
-                        parentId = parentId,
-                        kidId = kidId,
-                        questType = "COMPLETE_GAMES",
-                        increment = 1
-                    )
-                }
             }
         }
     }
@@ -190,12 +177,6 @@ fun ColorMatchGame(
                 score = score,
                 totalQuestions = totalRounds,
                 onPlayAgain = {
-                    // Track progress if credentials are available
-                    if (parentId != null && kidId != null) {
-                         // We can launch this in a coroutine but we need a scope.
-                         // However, this is mainly triggered on 'Play Again' or 'Back to Games' usually?
-                         // The request is better done when gameComplete becomes true.
-                    }
                     currentRound = 1
                     score = 0
                     targetColor = colors.random()

@@ -133,58 +133,11 @@ fun ImprovedChildHomeScreen(
                 contentPadding = PaddingValues(vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                // Header
-                // Premium View Quests Button
+                item {
+                // Premium Header with Glassmorphism
+                Spacer(modifier = Modifier.height(40.dp))
+                
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 20.dp)
-                        .clickable { navController?.navigate("questsScreen") },
-                    shape = RoundedCornerShape(20.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.Transparent
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color(0xFFFFA726),
-                                        Color(0xFFFF7043)
-                                    )
-                                )
-                            )
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Daily Quests",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "Earn stars & rewards!",
-                                    fontSize = 14.sp,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                            Text(
-                                text = "🚀",
-                                fontSize = 32.sp
-                            )
-                        }
-                    }
-                }
-
-                Row(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(
@@ -193,84 +146,57 @@ fun ImprovedChildHomeScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.2f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    )
+                                )
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            .padding(20.dp)
                     ) {
-                        Text(
-                            text = "Hello,",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                        Text(
-                            text = childState?.name?.takeIf { it.isNotBlank() } ?: "Kid Explorer!",
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            letterSpacing = 0.4.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Level Progress Section
-                        val currentScore = childState?.Score ?: 0
-                        val level = childState?.level?.filter { it.isDigit() }?.toIntOrNull() ?: 1
-                        
-                        // Visual calculation for progress bar (assuming 500 pts per visual level step for now)
-                        // This doesn't affect the backend level, just visualizes progress to "next" milestone
-                        val scorePerLevel = 500
-                        val progressInLevel = currentScore % scorePerLevel
-                        val progressFloat = (progressInLevel.toFloat() / scorePerLevel.toFloat()).coerceIn(0f, 1f)
-                        
-                        Column(
-                            modifier = Modifier.fillMaxWidth(0.9f)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                InfoChip(icon = "📊", text = "Level ${childState?.level ?: "1"}")
                                 Text(
-                                    text = "$progressInLevel / $scorePerLevel XP",
-                                    fontSize = 12.sp,
+                                    text = "Hello,",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = Color.White.copy(alpha = 0.9f)
+                                )
+                                Text(
+                                    text = childState?.name?.takeIf { it.isNotBlank() } ?: "Kid Explorer!",
+                                    fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White.copy(alpha = 0.8f)
+                                    color = Color.White,
+                                    letterSpacing = 0.4.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                            }
-                            
-                            Spacer(modifier = Modifier.height(6.dp))
-                            
-                            // XP Progress Bar
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(10.dp)
-                                    .background(
-                                        color = Color.White.copy(alpha = 0.2f),
-                                        shape = RoundedCornerShape(100.dp)
-                                    )
-                                    .border(
-                                        width = 1.dp,
-                                        color = Color.White.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(100.dp)
-                                    )
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(progressFloat)
-                                        .background(
-                                            brush = Brush.horizontalGradient(
-                                                colors = listOf(
-                                                    Color(0xFF4CAF50),
-                                                    Color(0xFF8BC34A)
-                                                )
-                                            ),
-                                            shape = RoundedCornerShape(100.dp)
-                                        )
-                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    childState?.age?.let {
+                                        InfoChip(icon = "🎂", text = "$it years old")
+                                    }
+                                    childState?.level?.takeIf { it.isNotBlank() }?.let {
+                                        InfoChip(icon = "📊", text = "Level $it")
+                                    }
+                                }
                             }
 
                             val context = LocalContext.current
@@ -279,32 +205,6 @@ fun ImprovedChildHomeScreen(
                                 val res = getAvatarResource(context, name)
                                 if (res != 0) res else getAvatarResource(context, "avatar_3")
                             }
-
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(60.dp) // Slightly larger avatar
-                                .background(Color.White.copy(alpha = 0.2f), CircleShape)
-                                .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (avatarResId != 0) {
-                                Image(
-                                    painter = painterResource(id = avatarResId),
-                                    contentDescription = childState?.name,
-                                    modifier = Modifier.size(48.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Image(
-                                    painter = painterResource(id = R.drawable.avatar_3),
-                                    contentDescription = childState?.name,
-                                    modifier = Modifier.size(48.dp),
-                                    contentScale = ContentScale.Crop
 
                             Box(
                                 modifier = Modifier
@@ -460,33 +360,8 @@ fun ImprovedChildHomeScreen(
                                             ),
                                             shape = RoundedCornerShape(5.dp)
                                         )
-
                                 )
                             }
-                        }
-                        
-                        Row(
-                            modifier = Modifier
-                                .background(
-                                    color = Color(0xFFFFD700).copy(alpha = 0.2f), // Gold tint
-                                    shape = RoundedCornerShape(100.dp)
-                                )
-                                .border(
-                                    width = 1.dp,
-                                    color = Color(0xFFFFD700).copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(100.dp)
-                                )
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(text = "⭐", fontSize = 14.sp)
-                            Text(
-                                text = "${childState?.Score ?: 0}",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
                         }
                     }
                 }
