@@ -21,8 +21,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-//    private const val BASE_URL = "https://tractile-trang-adaptively.ngrok-free.dev/"
-    private const val BASE_URL = "https://accessorial-zaida-soggily.ngrok-free.dev/"
+   private const val BASE_URL = "https://tractile-trang-adaptively.ngrok-free.dev/"
+   // private const val BASE_URL = "https://accessorial-zaida-soggily.ngrok-free.dev/"
 
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -529,6 +529,32 @@ object ApiClient {
             Result.failure(e)
         }
     }
+    /**
+     * Track progress for a quest (e.g. game completion)
+     */
+    suspend fun trackQuestProgress(
+        parentId: String,
+        kidId: String,
+        questType: String,
+        increment: Int = 1,
+        points: Int = 0,
+        isPerfect: Boolean = false
+    ): Result<Unit> {
+        return try {
+            val request = mapOf(
+                "questType" to questType,
+                "progressIncrement" to increment,
+                "pointsEarned" to points,
+                "isPerfectScore" to isPerfect
+            )
+            val response = apiService.trackQuestProgress(parentId, kidId, request)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Track quest progress failed: ${response.code()}"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
 
     // Get child review with AI-generated analysis
     suspend fun getChildReview(
