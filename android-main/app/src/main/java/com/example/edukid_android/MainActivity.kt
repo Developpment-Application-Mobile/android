@@ -35,6 +35,18 @@ import com.example.edukid_android.ui.theme.EduKid_androidTheme
 import com.example.edukid_android.utils.PreferencesManager
 import com.example.edukid_android.games.*
 import com.example.edukid_android.utils.ApiClient.apiService
+import com.example.edukid_android.utils.NetworkUtils
+import com.example.edukid_android.screens.OfflineGamesScreen
+import com.example.edukid_android.games.PuzzleGame
+import com.example.edukid_android.games.SudokuGame
+import com.example.edukid_android.games.TicTacToeGame
+import com.example.edukid_android.games.DrawingGame
+import com.example.edukid_android.games.WordGuessGame
+import com.example.edukid_android.games.SnakeGame
+import com.example.edukid_android.games.PianoGame
+import com.example.edukid_android.games.MathDashGame
+import com.example.edukid_android.games.WhackAMoleGame
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     private var deepLinkTokenState = mutableStateOf<String?>(null)
@@ -75,11 +87,25 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 
+                // Check Network
+                val context = LocalContext.current
+                val isOnline = remember { NetworkUtils.isInternetAvailable(context) }
+                
+                val startDest = if (!isOnline) {
+                    "offlineGames"
+                } else if (initialToken != null && initialParent != null) {
+                    "parentDashboard" 
+                } else {
+                    "welcome"
+                }
+
                 NavHost(
                     navController = navController, 
-                    startDestination = if (initialToken != null && initialParent != null) "parentDashboard" else "welcome"
-                ) {
-                    composable("welcome") { WelcomeScreen(navController) }
+                    startDestination = startDest
+                ) {                    composable("welcome") { WelcomeScreen(navController) }
+                    composable("offlineGames") { 
+                         OfflineGamesScreen(navController)
+                    }
                     composable("parentLogin") { 
                         ParentSignInScreen(
                             navController = navController,
@@ -231,6 +257,37 @@ class MainActivity : ComponentActivity() {
                     composable("game/world_explorer") {
                         WorldExplorerGame(navController = navController)
                     }
+                    
+                    // Offline Games Routes
+                    composable("game/puzzle") {
+                        PuzzleGame(navController = navController)
+                    }
+                    composable("game/sudoku") {
+                        SudokuGame(navController = navController)
+                    }
+                    composable("game/tictactoe") {
+                        TicTacToeGame(navController = navController)
+                    }
+                    composable("game/drawing") {
+                        DrawingGame(navController = navController)
+                    }
+                    composable("game/word_guess") {
+                        WordGuessGame(navController = navController)
+                    }
+                    composable("game/snake") {
+                        SnakeGame(navController = navController)
+                    }
+                    composable("game/piano") {
+                        PianoGame(navController = navController)
+                    }
+                    composable("game/math_dash") {
+                        MathDashGame(navController = navController)
+                    }
+                    composable("game/whack_a_mole") {
+                        WhackAMoleGame(navController = navController)
+                    }
+
+
                     
                     composable("quizPlay") {
                         currentQuiz?.let { quiz ->

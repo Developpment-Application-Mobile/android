@@ -27,7 +27,8 @@ fun GameCompletionDialog(
     score: Int,
     totalQuestions: Int,
     onPlayAgain: () -> Unit,
-    onBackToGames: () -> Unit
+    onBackToGames: () -> Unit,
+    customMessage: String? = null
 ) {
     val percentage = (score.toFloat() / totalQuestions * 100).toInt()
     val stars = when {
@@ -37,7 +38,7 @@ fun GameCompletionDialog(
         else -> 0
     }
 
-    val message = when (stars) {
+    val message = customMessage ?: when (stars) {
         3 -> "Amazing! You're a star! ⭐"
         2 -> "Great job! Keep it up! 🎉"
         1 -> "Good effort! Try again! 💪"
