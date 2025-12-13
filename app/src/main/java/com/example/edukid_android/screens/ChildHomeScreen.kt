@@ -57,12 +57,12 @@ fun ImprovedChildHomeScreen(
     var selectedFilter by remember { mutableStateOf<QuizType?>(null) }
 
     var childState by remember { mutableStateOf(child) }
-    
+
     // Update local state when child prop changes
     LaunchedEffect(child) {
         childState = child
     }
-    
+
     // Gifts state
     var gifts by remember { mutableStateOf<List<ShopItem>>(emptyList()) }
     var isLoadingGifts by remember { mutableStateOf(false) }
@@ -71,7 +71,7 @@ fun ImprovedChildHomeScreen(
     var isBuyingGift by remember { mutableStateOf<String?>(null) } // giftId being purchased
     var showGifts by remember { mutableStateOf(false) } // Toggle for gifts section
     val scope = rememberCoroutineScope()
-    
+
     // Load gifts on screen start
     LaunchedEffect(childState?.parentId, childState?.id) {
         if (childState?.parentId != null && childState?.id != null) {
@@ -87,7 +87,7 @@ fun ImprovedChildHomeScreen(
     val allQuizzes = remember(childState) {
         childState?.quizzes ?: emptyList()
     }
-    
+
     val filteredQuizzes = remember(selectedFilter, allQuizzes) {
         val quizzes = if (selectedFilter == null) {
             allQuizzes
@@ -121,7 +121,7 @@ fun ImprovedChildHomeScreen(
     ) {
         // Decorative elements
         DecorativeElementsChildHome()
-        
+
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -133,473 +133,554 @@ fun ImprovedChildHomeScreen(
                 contentPadding = PaddingValues(vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                // Header
-                // Premium View Quests Button
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 20.dp)
-                        .clickable { navController?.navigate("questsScreen") },
-                    shape = RoundedCornerShape(20.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.Transparent
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color(0xFFFFA726),
-                                        Color(0xFFFF7043)
-                                    )
-                                )
-                            )
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Daily Quests",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Text(
-                                    text = "Earn stars & rewards!",
-                                    fontSize = 14.sp,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                            Text(
-                                text = "🚀",
-                                fontSize = 32.sp
-                            )
-                        }
-                    }
-                }
+                item {
+                    // Premium Header with Glassmorphism
+                    Spacer(modifier = Modifier.height(40.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White.copy(alpha = 0.15f)
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Hello,",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                        Text(
-                            text = childState?.name?.takeIf { it.isNotBlank() } ?: "Kid Explorer!",
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            letterSpacing = 0.4.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Level Progress Section
-                        val currentScore = childState?.Score ?: 0
-                        val level = childState?.level?.filter { it.isDigit() }?.toIntOrNull() ?: 1
-                        
-                        // Visual calculation for progress bar (assuming 500 pts per visual level step for now)
-                        // This doesn't affect the backend level, just visualizes progress to "next" milestone
-                        val scorePerLevel = 500
-                        val progressInLevel = currentScore % scorePerLevel
-                        val progressFloat = (progressInLevel.toFloat() / scorePerLevel.toFloat()).coerceIn(0f, 1f)
-                        
-                        Column(
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                InfoChip(icon = "📊", text = "Level ${childState?.level ?: "1"}")
-                                Text(
-                                    text = "$progressInLevel / $scorePerLevel XP",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White.copy(alpha = 0.8f)
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.height(6.dp))
-                            
-                            // XP Progress Bar
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(10.dp)
-                                    .background(
-                                        color = Color.White.copy(alpha = 0.2f),
-                                        shape = RoundedCornerShape(100.dp)
-                                    )
-                                    .border(
-                                        width = 1.dp,
-                                        color = Color.White.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(100.dp)
-                                    )
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(progressFloat)
-                                        .background(
-                                            brush = Brush.horizontalGradient(
-                                                colors = listOf(
-                                                    Color(0xFF4CAF50),
-                                                    Color(0xFF8BC34A)
-                                                )
-                                            ),
-                                            shape = RoundedCornerShape(100.dp)
-                                        )
-                                )
-                            }
-
-                            val context = LocalContext.current
-                            val avatarResId = remember(childState?.avatarEmoji) {
-                                val name = childState?.avatarEmoji ?: "avatar_3"
-                                val res = getAvatarResource(context, name)
-                                if (res != 0) res else getAvatarResource(context, "avatar_3")
-                            }
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(60.dp) // Slightly larger avatar
-                                .background(Color.White.copy(alpha = 0.2f), CircleShape)
-                                .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (avatarResId != 0) {
-                                Image(
-                                    painter = painterResource(id = avatarResId),
-                                    contentDescription = childState?.name,
-                                    modifier = Modifier.size(48.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Image(
-                                    painter = painterResource(id = R.drawable.avatar_3),
-                                    contentDescription = childState?.name,
-                                    modifier = Modifier.size(48.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
-                        
-                        Row(
-                            modifier = Modifier
-                                .background(
-                                    color = Color(0xFFFFD700).copy(alpha = 0.2f), // Gold tint
-                                    shape = RoundedCornerShape(100.dp)
-                                )
-                                .border(
-                                    width = 1.dp,
-                                    color = Color(0xFFFFD700).copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(100.dp)
-                                )
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(text = "⭐", fontSize = 14.sp)
-                            Text(
-                                text = "${childState?.Score ?: 0}",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(20.dp))
-                
-                // Collapsible Gifts Section
-                if (gifts.isNotEmpty()) {
-                    Button(
-                        onClick = { showGifts = !showGifts },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.15f)
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        contentPadding = PaddingValues(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(
-                                            brush = Brush.radialGradient(
-                                                colors = listOf(
-                                                    Color(0xFFFF6B9D),
-                                                    Color(0xFFC239B3)
-                                                )
-                                            ),
-                                            shape = CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = "🎁", fontSize = 20.sp)
-                                }
-                                
-                                Column {
-                                    Text(
-                                        text = "View Rewards",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = "${gifts.size} available",
-                                        fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
-                            
-                            Text(
-                                text = if (showGifts) "▲" else "▼",
-                                fontSize = 16.sp,
-                                color = Color.White
-                            )
-                        }
-                    }
-                    
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = showGifts,
-                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                    ) {
-                        Column {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(gifts) { gift ->
-                                    CompactGiftCard(
-                                        gift = gift,
-                                        currentScore = childState?.Score ?: 0,
-                                        isBuying = isBuyingGift == gift.id,
-                                        onBuyClick = {
-                                            if (childState?.parentId != null && childState?.id != null && gift.id != null) {
-                                                isBuyingGift = gift.id
-                                                scope.launch {
-                                                    val result = ApiClient.buyGift(
-                                                        parentId = childState!!.parentId!!,
-                                                        kidId = childState!!.id!!,
-                                                        giftId = gift.id!!
-                                                    )
-                                                    result.onSuccess {
-                                                        childState = childState?.copy(Score = (childState?.Score ?: 0) - gift.cost)
-                                                        giftSuccess = "You bought ${gift.title}!"
-                                                        isBuyingGift = null
-                                                        val reloadResult = ApiClient.getGifts(childState!!.parentId!!, childState!!.id!!)
-                                                        reloadResult.onSuccess { giftList ->
-                                                            gifts = giftList
-                                                        }
-                                                    }.onFailure { e ->
-                                                        giftError = e.message ?: "Failed to buy gift"
-                                                        isBuyingGift = null
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(20.dp))
-                
-                // Category Filter
-                Text(
-                    text = "📚 Quiz Categories",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(bottom = 20.dp)
-                ) {
-                    // All categories
-                    item {
-                        CategoryFilterChip(
-                            label = "All",
-                            icon = "🎯",
-                            isSelected = selectedFilter == null,
-                            onClick = { selectedFilter = null }
-                        )
-                    }
-                    
-                    // Individual categories
-                    item {
-                        CategoryFilterChip(
-                            label = "Math",
-                            icon = "🔢",
-                            isSelected = selectedFilter == QuizType.MATH,
-                            onClick = { selectedFilter = QuizType.MATH }
-                        )
-                    }
-                    item {
-                        CategoryFilterChip(
-                            label = "Science",
-                            icon = "🔬",
-                            isSelected = selectedFilter == QuizType.SCIENCE,
-                            onClick = { selectedFilter = QuizType.SCIENCE }
-                        )
-                    }
-                    item {
-                        CategoryFilterChip(
-                            label = "History",
-                            icon = "⏰",
-                            isSelected = selectedFilter == QuizType.HISTORY,
-                            onClick = { selectedFilter = QuizType.HISTORY }
-                        )
-                    }
-                    item {
-                        CategoryFilterChip(
-                            label = "Geography",
-                            icon = "🌍",
-                            isSelected = selectedFilter == QuizType.GEOGRAPHY,
-                            onClick = { selectedFilter = QuizType.GEOGRAPHY }
-                        )
-                    }
-                    item {
-                        CategoryFilterChip(
-                            label = "Literature",
-                            icon = "📖",
-                            isSelected = selectedFilter == QuizType.LITERATURE,
-                            onClick = { selectedFilter = QuizType.LITERATURE }
-                        )
-                    }
-                    item {
-                        CategoryFilterChip(
-                            label = "General",
-                            icon = "🎓",
-                            isSelected = selectedFilter == QuizType.GENERAL,
-                            onClick = { selectedFilter = QuizType.GENERAL }
-                        )
-                    }
-                }
-                
-                // Quizzes List - Now as Column items instead of LazyColumn
-                // In Progress Section
-                if (inProgressQuizzes.isNotEmpty()) {
-                    Text(
-                        text = "Continue Playing 🎮",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    
-                    inProgressQuizzes.forEach { quiz ->
-                        PremiumQuizCard(
-                            quiz = quiz,
-                            onClick = { onQuizClick(quiz) }
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                // Available Quizzes Section
-                if (notStartedQuizzes.isNotEmpty()) {
-                    Text(
-                        text = "Start New Adventure 🚀",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-
-                    notStartedQuizzes.forEach { quiz ->
-                        PremiumQuizCard(
-                            quiz = quiz,
-                            onClick = { onQuizClick(quiz) }
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                }
-                
-                // Empty state
-                if (filteredQuizzes.isEmpty()) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color.White.copy(alpha = 0.95f)
-                        )
+                            containerColor = Color.White.copy(alpha = 0.15f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(40.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.White.copy(alpha = 0.2f),
+                                            Color.White.copy(alpha = 0.05f)
+                                        )
+                                    )
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = Color.White.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(24.dp)
+                                )
+                                .padding(20.dp)
                         ) {
-                            Text(
-                                text = "🎯",
-                                fontSize = 48.sp
-                            )
+                            // Premium View Quests Button
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 20.dp)
+                                    .clickable { navController?.navigate("questsScreen") },
+                                shape = RoundedCornerShape(20.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Color.Transparent
+                                )
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                colors = listOf(
+                                                    Color(0xFFFFA726),
+                                                    Color(0xFFFF7043)
+                                                )
+                                            )
+                                        )
+                                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "Daily Quests",
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Text(
+                                                text = "Earn stars & rewards!",
+                                                fontSize = 14.sp,
+                                                color = Color.White.copy(alpha = 0.9f)
+                                            )
+                                        }
+                                        Text(
+                                            text = "🚀",
+                                            fontSize = 32.sp
+                                        )
+                                    }
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "Hello,",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        color = Color.White.copy(alpha = 0.9f)
+                                    )
+                                    Text(
+                                        text = childState?.name?.takeIf { it.isNotBlank() } ?: "Kid Explorer!",
+                                        fontSize = 28.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        letterSpacing = 0.4.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        childState?.age?.let {
+                                            InfoChip(icon = "🎂", text = "$it years old")
+                                        }
+                                        childState?.level?.takeIf { it.isNotBlank() }?.let {
+                                            InfoChip(icon = "📊", text = "Level $it")
+                                        }
+                                    }
+                                }
+
+                                val context = LocalContext.current
+                                val avatarResId = remember(childState?.avatarEmoji) {
+                                    val name = childState?.avatarEmoji ?: "avatar_3"
+                                    val res = getAvatarResource(context, name)
+                                    if (res != 0) res else getAvatarResource(context, "avatar_3")
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .background(
+                                            brush = Brush.radialGradient(
+                                                colors = listOf(
+                                                    Color(0xFFFFD700),
+                                                    Color(0xFFFFA500)
+                                                )
+                                            ),
+                                            shape = CircleShape
+                                        )
+                                        .padding(3.dp)
+                                        .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                                        .padding(2.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (avatarResId != 0) {
+                                        Image(
+                                            painter = painterResource(id = avatarResId),
+                                            contentDescription = childState?.name,
+                                            modifier = Modifier.size(48.dp),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.avatar_3),
+                                            contentDescription = childState?.name,
+                                            modifier = Modifier.size(48.dp),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Points and Level Progress
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Points with Coin Icon
+                                Row(
+                                    modifier = Modifier
+                                        .background(
+                                            brush = Brush.horizontalGradient(
+                                                colors = listOf(
+                                                    Color(0xFFFFD700).copy(alpha = 0.3f),
+                                                    Color(0xFFFFA500).copy(alpha = 0.2f)
+                                                )
+                                            ),
+                                            shape = RoundedCornerShape(100.dp)
+                                        )
+                                        .border(
+                                            width = 2.dp,
+                                            color = Color(0xFFFFD700).copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(100.dp)
+                                        )
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.coins),
+                                        contentDescription = "Coins",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = "${childState?.Score ?: 0}",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                // Level Badge
+                                Row(
+                                    modifier = Modifier
+                                        .background(
+                                            brush = Brush.horizontalGradient(
+                                                colors = listOf(
+                                                    Color(0xFFAF7EE7).copy(alpha = 0.3f),
+                                                    Color(0xFF7E57C2).copy(alpha = 0.2f)
+                                                )
+                                            ),
+                                            shape = RoundedCornerShape(100.dp)
+                                        )
+                                        .border(
+                                            width = 2.dp,
+                                            color = Color(0xFFAF7EE7).copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(100.dp)
+                                        )
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(text = "🏆", fontSize = 20.sp)
+                                    Text(
+                                        text = "Level ${childState?.progressionLevel ?: 1}",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = if (childState == null) "No child data available" else "No quizzes in this category",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF2E2E2E),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+
+                            // Level Progress Bar
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Progress to Level ${(childState?.progressionLevel ?: 1) + 1}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White.copy(alpha = 0.9f)
+                                    )
+                                    Text(
+                                        text = "${(childState?.lifetimeScore ?: 0) % 1000} / 1000",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFFFD700)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(10.dp)
+                                        .background(
+                                            color = Color.White.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(5.dp)
+                                        )
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(((childState?.lifetimeScore ?: 0) % 1000) / 1000f)
+                                            .fillMaxHeight()
+                                            .background(
+                                                brush = Brush.horizontalGradient(
+                                                    colors = listOf(
+                                                        Color(0xFFFFD700),
+                                                        Color(0xFFFFA500)
+                                                    )
+                                                ),
+                                                shape = RoundedCornerShape(5.dp)
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Collapsible Gifts Section
+                    if (gifts.isNotEmpty()) {
+                        Button(
+                            onClick = { showGifts = !showGifts },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White.copy(alpha = 0.15f)
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .background(
+                                                brush = Brush.radialGradient(
+                                                    colors = listOf(
+                                                        Color(0xFFFF6B9D),
+                                                        Color(0xFFC239B3)
+                                                    )
+                                                ),
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = "🎁", fontSize = 20.sp)
+                                    }
+
+                                    Column {
+                                        Text(
+                                            text = "View Rewards",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "${gifts.size} available",
+                                            fontSize = 12.sp,
+                                            color = Color.White.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = if (showGifts) "▲" else "▼",
+                                    fontSize = 16.sp,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showGifts,
+                            enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                            exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                        ) {
+                            Column {
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(gifts) { gift ->
+                                        CompactGiftCard(
+                                            gift = gift,
+                                            currentScore = childState?.Score ?: 0,
+                                            isBuying = isBuyingGift == gift.id,
+                                            onBuyClick = {
+                                                if (childState?.parentId != null && childState?.id != null && gift.id != null) {
+                                                    isBuyingGift = gift.id
+                                                    scope.launch {
+                                                        val result = ApiClient.buyGift(
+                                                            parentId = childState!!.parentId!!,
+                                                            kidId = childState!!.id!!,
+                                                            giftId = gift.id!!
+                                                        )
+                                                        result.onSuccess {
+                                                            childState = childState?.copy(Score = (childState?.Score ?: 0) - gift.cost)
+                                                            giftSuccess = "You bought ${gift.title}!"
+                                                            isBuyingGift = null
+                                                            val reloadResult = ApiClient.getGifts(childState!!.parentId!!, childState!!.id!!)
+                                                            reloadResult.onSuccess { giftList ->
+                                                                gifts = giftList
+                                                            }
+                                                        }.onFailure { e ->
+                                                            giftError = e.message ?: "Failed to buy gift"
+                                                            isBuyingGift = null
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Category Filter
+                    Text(
+                        text = "📚 Quiz Categories",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(bottom = 20.dp)
+                    ) {
+                        // All categories
+                        item {
+                            CategoryFilterChip(
+                                label = "All",
+                                icon = "🎯",
+                                isSelected = selectedFilter == null,
+                                onClick = { selectedFilter = null }
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = if (childState == null) "Check your connection or scan QR again" else "Try selecting a different category!",
-                                fontSize = 14.sp,
-                                color = Color(0xFF666666),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        }
+
+                        // Individual categories
+                        item {
+                            CategoryFilterChip(
+                                label = "Math",
+                                icon = "🔢",
+                                isSelected = selectedFilter == QuizType.MATH,
+                                onClick = { selectedFilter = QuizType.MATH }
+                            )
+                        }
+                        item {
+                            CategoryFilterChip(
+                                label = "Science",
+                                icon = "🔬",
+                                isSelected = selectedFilter == QuizType.SCIENCE,
+                                onClick = { selectedFilter = QuizType.SCIENCE }
+                            )
+                        }
+                        item {
+                            CategoryFilterChip(
+                                label = "History",
+                                icon = "⏰",
+                                isSelected = selectedFilter == QuizType.HISTORY,
+                                onClick = { selectedFilter = QuizType.HISTORY }
+                            )
+                        }
+                        item {
+                            CategoryFilterChip(
+                                label = "Geography",
+                                icon = "🌍",
+                                isSelected = selectedFilter == QuizType.GEOGRAPHY,
+                                onClick = { selectedFilter = QuizType.GEOGRAPHY }
+                            )
+                        }
+                        item {
+                            CategoryFilterChip(
+                                label = "Literature",
+                                icon = "📖",
+                                isSelected = selectedFilter == QuizType.LITERATURE,
+                                onClick = { selectedFilter = QuizType.LITERATURE }
+                            )
+                        }
+                        item {
+                            CategoryFilterChip(
+                                label = "General",
+                                icon = "🎓",
+                                isSelected = selectedFilter == QuizType.GENERAL,
+                                onClick = { selectedFilter = QuizType.GENERAL }
                             )
                         }
                     }
-                }
-                
-                // Bottom padding for navigation bar
-                Spacer(modifier = Modifier.height(80.dp))
+
+                    // Quizzes List - Now as Column items instead of LazyColumn
+                    // In Progress Section
+                    if (inProgressQuizzes.isNotEmpty()) {
+                        Text(
+                            text = "Continue Playing 🎮",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        inProgressQuizzes.forEach { quiz ->
+                            PremiumQuizCard(
+                                quiz = quiz,
+                                onClick = { onQuizClick(quiz) }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // Available Quizzes Section
+                    if (notStartedQuizzes.isNotEmpty()) {
+                        Text(
+                            text = "Start New Adventure 🚀",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        notStartedQuizzes.forEach { quiz ->
+                            PremiumQuizCard(
+                                quiz = quiz,
+                                onClick = { onQuizClick(quiz) }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+
+                    // Empty state
+                    if (filteredQuizzes.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.White.copy(alpha = 0.95f)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(40.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "🎯",
+                                    fontSize = 48.sp
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = if (childState == null) "No child data available" else "No quizzes in this category",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF2E2E2E),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (childState == null) "Check your connection or scan QR again" else "Try selecting a different category!",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    // Bottom padding for navigation bar
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
 
@@ -615,7 +696,7 @@ fun ImprovedChildHomeScreen(
             )
         }
     }
-    
+
     // Gift error snackbar
     giftError?.let { error ->
         Box(
@@ -640,7 +721,7 @@ fun ImprovedChildHomeScreen(
             }
         }
     }
-    
+
     // Gift success snackbar
     giftSuccess?.let { msg ->
         Box(
@@ -670,7 +751,7 @@ fun CompactGiftCard(
     onBuyClick: () -> Unit
 ) {
     val canAfford = currentScore >= gift.cost
-    
+
     Card(
         modifier = Modifier
             .width(110.dp)
@@ -701,9 +782,9 @@ fun CompactGiftCard(
                     fontSize = 20.sp
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(6.dp))
-            
+
             Text(
                 text = gift.title,
                 fontSize = 12.sp,
@@ -714,9 +795,9 @@ fun CompactGiftCard(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 lineHeight = 14.sp
             )
-            
+
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -732,9 +813,9 @@ fun CompactGiftCard(
                     color = if (canAfford) Color(0xFF2E2E2E) else Color(0xFF999999)
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(6.dp))
-            
+
             if (isBuying) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
@@ -1057,6 +1138,6 @@ fun ImprovedChildHomeScreenPreview() {
         avatarEmoji = "👧",
         Score = 250
     )
-    
+
     ImprovedChildHomeScreen(child = sampleChild)
 }

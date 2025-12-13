@@ -555,6 +555,9 @@ object ApiClient {
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     // Get child review with AI-generated analysis
     suspend fun getChildReview(

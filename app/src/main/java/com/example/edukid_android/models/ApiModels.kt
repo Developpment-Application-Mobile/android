@@ -331,7 +331,7 @@ data class ChildReviewResponse(
     val performanceByTopic: List<PerformanceByTopicResponse>? = emptyList(),
     val strengths: String? = null,
     val weaknesses: String? = null,
-    val recommendations: List<String>? = null,  // Changed from String to List<String>
+    val recommendations: String? = null,
     val summary: String? = null,
     val generatedAt: String? = null,
     val pdfBase64: String? = null
@@ -349,7 +349,7 @@ data class ChildReviewResponse(
             performanceByTopic = this.performanceByTopic?.map { it.toPerformanceByTopic() } ?: emptyList(),
             strengths = this.strengths ?: "",
             weaknesses = this.weaknesses ?: "",
-            recommendations = this.recommendations ?: emptyList(),  // Directly use the list
+            recommendations = this.recommendations?.split("\n\n")?.filter { it.isNotBlank() } ?: emptyList(),
             summary = this.summary ?: "",
             generatedAt = this.generatedAt ?: "",
             pdfBase64 = this.pdfBase64

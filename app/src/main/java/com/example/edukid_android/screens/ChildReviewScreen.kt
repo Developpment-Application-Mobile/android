@@ -62,6 +62,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.onFailure
 
 @Composable
 fun ChildReviewScreen(
@@ -340,6 +341,8 @@ fun ChildReviewScreen(
         }
     }
 }
+
+private fun ApiClient.getChildReview(parentId: String, id: String) {}
 
 @Composable
 fun ReviewContent(
