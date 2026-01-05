@@ -39,6 +39,7 @@ import com.example.edukid_android.components.BottomNavigationBar
 import com.example.edukid_android.models.Child
 import com.example.edukid_android.models.Quiz
 import com.example.edukid_android.models.QuizType
+import com.example.edukid_android.models.InventoryItem
 import com.example.edukid_android.models.ShopItem
 import com.example.edukid_android.models.getBackgroundColor
 import com.example.edukid_android.models.getIconRes
@@ -52,7 +53,9 @@ import kotlinx.coroutines.launch
 fun ImprovedChildHomeScreen(
     navController: NavController? = null,
     child: Child? = null,
-    onQuizClick: (Quiz) -> Unit = {}
+    onQuizClick: (Quiz) -> Unit = {},
+    onChildUpdate: (Child) -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     var selectedFilter by remember { mutableStateOf<QuizType?>(null) }
 
@@ -62,26 +65,20 @@ fun ImprovedChildHomeScreen(
     LaunchedEffect(child) {
         childState = child
     }
-
-    // Gifts state
-    var gifts by remember { mutableStateOf<List<ShopItem>>(emptyList()) }
-    var isLoadingGifts by remember { mutableStateOf(false) }
+    // Gifts state (Restored)
     var giftError by remember { mutableStateOf<String?>(null) }
     var giftSuccess by remember { mutableStateOf<String?>(null) }
     var isBuyingGift by remember { mutableStateOf<String?>(null) } // giftId being purchased
     var showGifts by remember { mutableStateOf(false) } // Toggle for gifts section
     val scope = rememberCoroutineScope()
 
-    // Load gifts on screen start
-    LaunchedEffect(childState?.parentId, childState?.id) {
-        if (childState?.parentId != null && childState?.id != null) {
-            val result = ApiClient.getGifts(childState!!.parentId!!, childState!!.id!!)
-            result.onSuccess { giftList ->
-                gifts = giftList
-            }.onFailure { e ->
-                giftError = e.message ?: "Failed to load gifts"
-            }
-        }
+    val ownedGifts = remember(childState) {
+        childState?.inventory ?: emptyList()
+    }
+
+    val availableGifts = remember(childState) {
+        val inventoryTitles = childState?.inventory?.map { it.title }?.toSet() ?: emptySet()
+        childState?.shopCatalog?.filter { it.title !in inventoryTitles } ?: emptyList()
     }
 
     val allQuizzes = remember(childState) {
@@ -212,6 +209,41 @@ fun ImprovedChildHomeScreen(
                                     }
                                 }
                             }
+                            
+                            // Logout Button
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 20.dp),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Card(
+                                    modifier = Modifier.clickable { onLogout() },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color.White.copy(alpha = 0.2f)
+                                    ),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "🚪",
+                                            fontSize = 18.sp
+                                        )
+                                        Text(
+                                            text = "Logout",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                            
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -240,11 +272,11 @@ fun ImprovedChildHomeScreen(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         childState?.age?.let {
-                                            InfoChip(icon = "🎂", text = "$it years old")
+                                            InfoChip(iconResId = R.drawable.icon_birthday, text = "$it years old")
                                         }
-                                        childState?.level?.takeIf { it.isNotBlank() }?.let {
-                                            InfoChip(icon = "📊", text = "Level $it")
-                                        }
+//                                        childState?.level?.takeIf { it.isNotBlank() }?.let {
+//                                            InfoChip(iconResId = R.drawable.icon_level, text = "Level $it")
+//                                        }
                                     }
                                 }
 
@@ -418,77 +450,113 @@ fun ImprovedChildHomeScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     // Collapsible Gifts Section
-                    if (gifts.isNotEmpty()) {
-                        Button(
-                            onClick = { showGifts = !showGifts },
+                    Button(
+                        onClick = { showGifts = !showGifts },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.15f)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White.copy(alpha = 0.15f)
-                            ),
-                            shape = RoundedCornerShape(16.dp),
-                            contentPadding = PaddingValues(16.dp)
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .background(
-                                                brush = Brush.radialGradient(
-                                                    colors = listOf(
-                                                        Color(0xFFFF6B9D),
-                                                        Color(0xFFC239B3)
-                                                    )
-                                                ),
-                                                shape = CircleShape
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .background(
+                                            brush = Brush.radialGradient(
+                                                colors = listOf(
+                                                    Color(0xFFFF6B9D),
+                                                    Color(0xFFC239B3)
+                                                )
                                             ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(text = "🎁", fontSize = 20.sp)
-                                    }
-
-                                    Column {
-                                        Text(
-                                            text = "View Rewards",
-                                            fontSize = 16.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                        Text(
-                                            text = "${gifts.size} available",
-                                            fontSize = 12.sp,
-                                            color = Color.White.copy(alpha = 0.7f)
-                                        )
-                                    }
+                                            shape = CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(text = "🎁", fontSize = 20.sp)
                                 }
 
-                                Text(
-                                    text = if (showGifts) "▲" else "▼",
-                                    fontSize = 16.sp,
-                                    color = Color.White
-                                )
+                                Column {
+                                    Text(
+                                        text = "Rewards & Treasures",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "${availableGifts.size} available • ${ownedGifts.size} collected",
+                                        fontSize = 12.sp,
+                                        color = Color.White.copy(alpha = 0.7f)
+                                    )
+                                }
                             }
-                        }
 
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = showGifts,
-                            enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                            exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                        ) {
-                            Column {
-                                Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = if (showGifts) "▲" else "▼",
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showGifts,
+                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                    ) {
+                        Column {
+                            // 1. Your Treasures (Owned Gifts)
+                            if (ownedGifts.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "🏆 Your Treasures",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
 
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    items(gifts) { gift ->
+                                    items(ownedGifts) { item ->
+                                        // Using a simplified card for owned items
+                                        OwnedGiftCard(item = item)
+                                    }
+                                }
+                            }
+
+                            // 2. Available Rewards (Shop Catalog)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "🛍️ Available Rewards",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
+                            if (availableGifts.isEmpty()) {
+                                Text(
+                                    text = "Ask your parent to add more rewards!",
+                                    fontSize = 13.sp,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            } else {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(availableGifts) { gift ->
                                         CompactGiftCard(
                                             gift = gift,
                                             currentScore = childState?.Score ?: 0,
@@ -500,16 +568,28 @@ fun ImprovedChildHomeScreen(
                                                         val result = ApiClient.buyGift(
                                                             parentId = childState!!.parentId!!,
                                                             kidId = childState!!.id!!,
-                                                            giftId = gift.id!!
+                                                            giftId = gift.id
                                                         )
-                                                        result.onSuccess {
-                                                            childState = childState?.copy(Score = (childState?.Score ?: 0) - gift.cost)
+                                                        result.onSuccess { _ ->
+                                                            // Simple approach: just subtract cost from local score
+                                                            // Add gift to inventory locally
+                                                            val newInventoryItem = InventoryItem(
+                                                                title = gift.title,
+                                                                cost = gift.cost,
+                                                                purchasedAt = System.currentTimeMillis().toString()
+                                                            )
+                                                            
+                                                            val updatedChild = childState?.copy(
+                                                                Score = (childState?.Score ?: 0) - gift.cost,
+                                                                inventory = (childState?.inventory ?: emptyList()) + newInventoryItem
+                                                            )
+                                                            
+                                                            if (updatedChild != null) {
+                                                                childState = updatedChild
+                                                                onChildUpdate(updatedChild)
+                                                            }
                                                             giftSuccess = "You bought ${gift.title}!"
                                                             isBuyingGift = null
-                                                            val reloadResult = ApiClient.getGifts(childState!!.parentId!!, childState!!.id!!)
-                                                            reloadResult.onSuccess { giftList ->
-                                                                gifts = giftList
-                                                            }
                                                         }.onFailure { e ->
                                                             giftError = e.message ?: "Failed to buy gift"
                                                             isBuyingGift = null
@@ -807,10 +887,10 @@ fun CompactGiftCard(
                     fontSize = 12.sp
                 )
                 Text(
-                    text = "${gift.cost}",
-                    fontSize = 11.sp,
+                    text = "${gift.cost} ⭐",
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (canAfford) Color(0xFF2E2E2E) else Color(0xFF999999)
+                    color = if (canAfford) Color(0xFF43A047) else Color(0xFFAF7EE7)
                 )
             }
 
@@ -843,6 +923,63 @@ fun CompactGiftCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun OwnedGiftCard(item: InventoryItem) {
+    Card(
+        modifier = Modifier
+            .width(110.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFE8F5E9) // Light green for owned
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = Color(0xFF4CAF50).copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(10.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "🎁",
+                    fontSize = 20.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = item.title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF2E2E2E),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 14.sp
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = "Owned",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF4CAF50)
+            )
         }
     }
 }
@@ -1086,7 +1223,7 @@ fun PremiumQuizCard(
 
 
 @Composable
-fun BoxScope.DecorativeElementsChildHome() {
+fun DecorativeElementsChildHome() {
     Image(
         painter = painterResource(id = R.drawable.education_book),
         contentDescription = "Education Book",

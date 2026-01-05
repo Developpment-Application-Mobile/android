@@ -3,7 +3,6 @@ package com.example.edukid_android.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,8 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -62,6 +59,7 @@ fun ParentProfileScreen(
     var newPasswordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf<Child?>(null) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     var isUpdating by remember { mutableStateOf(false) }
 
     Box(
@@ -93,47 +91,29 @@ fun ParentProfileScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = onBackClick, modifier = Modifier
-                                .size(48.dp)
-                                .background(
-                                    color = Color.White.copy(alpha = 0.2f), shape = CircleShape
-                                )
-                        ) {
-                            Text(
-                                text = "←", fontSize = 24.sp, color = Color.White
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Text(
-                            text = "Profile Settings",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            letterSpacing = 0.4.sp
-                        )
-                    }
-
-                    // Logout button
                     IconButton(
-                        onClick = onLogoutClick, modifier = Modifier
+                        onClick = onBackClick, modifier = Modifier
                             .size(48.dp)
                             .background(
-                                color = Color(0xFFFF5252).copy(alpha = 0.3f), shape = CircleShape
+                                color = Color.White.copy(alpha = 0.2f), shape = CircleShape
                             )
                     ) {
                         Text(
-                            text = "🚪", fontSize = 20.sp
+                            text = "←", fontSize = 24.sp, color = Color.White
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Text(
+                        text = "Profile Settings",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        letterSpacing = 0.4.sp
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -171,8 +151,7 @@ fun ParentProfileScreen(
                             value = name,
                             onValueChange = { name = it },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
+                                .fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color(0xFF2E2E2E),
                                 unfocusedTextColor = Color(0xFF2E2E2E),
@@ -180,7 +159,7 @@ fun ParentProfileScreen(
                                 unfocusedBorderColor = Color(0xFFE0E0E0),
                                 cursorColor = Color(0xFFAF7EE7)
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             singleLine = true
                         )
 
@@ -198,8 +177,7 @@ fun ParentProfileScreen(
                             value = email,
                             onValueChange = { email = it },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
+                                .fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color(0xFF2E2E2E),
                                 unfocusedTextColor = Color(0xFF2E2E2E),
@@ -207,7 +185,7 @@ fun ParentProfileScreen(
                                 unfocusedBorderColor = Color(0xFFE0E0E0),
                                 cursorColor = Color(0xFFAF7EE7)
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                         )
@@ -249,8 +227,7 @@ fun ParentProfileScreen(
                             value = currentPassword,
                             onValueChange = { currentPassword = it },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
+                                .fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color(0xFF2E2E2E),
                                 unfocusedTextColor = Color(0xFF2E2E2E),
@@ -258,7 +235,7 @@ fun ParentProfileScreen(
                                 unfocusedBorderColor = Color(0xFFE0E0E0),
                                 cursorColor = Color(0xFFAF7EE7)
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             singleLine = true,
                             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -285,8 +262,7 @@ fun ParentProfileScreen(
                             value = newPassword,
                             onValueChange = { newPassword = it },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
+                                .fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color(0xFF2E2E2E),
                                 unfocusedTextColor = Color(0xFF2E2E2E),
@@ -294,7 +270,7 @@ fun ParentProfileScreen(
                                 unfocusedBorderColor = Color(0xFFE0E0E0),
                                 cursorColor = Color(0xFFAF7EE7)
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             singleLine = true,
                             visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -321,8 +297,7 @@ fun ParentProfileScreen(
                             value = confirmPassword,
                             onValueChange = { confirmPassword = it },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
+                                .fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Color(0xFF2E2E2E),
                                 unfocusedTextColor = Color(0xFF2E2E2E),
@@ -330,7 +305,7 @@ fun ParentProfileScreen(
                                 unfocusedBorderColor = Color(0xFFE0E0E0),
                                 cursorColor = Color(0xFFAF7EE7)
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(16.dp),
                             singleLine = true,
                             visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -411,17 +386,22 @@ fun ParentProfileScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp),
+                        .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF272052)
                     ),
-                    shape = RoundedCornerShape(100.dp),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 2.dp
+                    ),
+                    shape = RoundedCornerShape(16.dp),
                     enabled = !isUpdating
                 ) {
                     if (isUpdating) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
-                            color = Color(0xFF2E2E2E),
+                            color = Color(0xFF272052),
                             strokeWidth = 2.dp
                         )
                     } else {
@@ -429,10 +409,31 @@ fun ParentProfileScreen(
                             text = "UPDATE PROFILE",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2E2E2E),
                             letterSpacing = 0.4.sp
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Logout Button
+                OutlinedButton(
+                    onClick = { showLogoutDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFFF5252).copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFFF5252)
+                    )
+                ) {
+                    Text(
+                        text = "LOGOUT",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.4.sp
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -443,7 +444,7 @@ fun ParentProfileScreen(
     // Delete Confirmation Dialog
     showDeleteDialog?.let { child ->
         AlertDialog(
-            onDismissRequest = { },
+            onDismissRequest = { showDeleteDialog = null },
             containerColor = Color.White,
             shape = RoundedCornerShape(24.dp),
             title = {
@@ -477,6 +478,7 @@ fun ParentProfileScreen(
                 Button(
                     onClick = {
                         onDeleteChild(child)
+                        showDeleteDialog = null
                     }, colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFF5252)
                     ), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
@@ -491,7 +493,7 @@ fun ParentProfileScreen(
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = { },
+                    onClick = { showDeleteDialog = null },
                     border = androidx.compose.foundation.BorderStroke(
                         2.dp, Color(0xFFE0E0E0)
                     ),
@@ -507,6 +509,90 @@ fun ParentProfileScreen(
                 }
             })
     }
+
+    // Logout Confirmation Dialog
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            onConfirm = {
+                showLogoutDialog = false
+                onLogoutClick()
+            },
+            onDismiss = { showLogoutDialog = false }
+        )
+    }
+}
+
+@Composable
+fun LogoutConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(28.dp),
+        title = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "👋",
+                    fontSize = 48.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Sign Out?",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E2E2E),
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to sign out? You'll need to sign back in to manage your child's progress.",
+                fontSize = 16.sp,
+                color = Color(0xFF666666),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFF5252)
+                ),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(
+                    text = "Sign Out",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Stay Signed In",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF666666)
+                )
+            }
+        }
+    )
 }
 
 @Composable

@@ -42,11 +42,21 @@ fun ParentSignUpScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    
+    var fullNameError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+    var confirmPasswordError by remember { mutableStateOf<String?>(null) }
+
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+
+    fun validateEmail(mail: String): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(mail).matches()
+    }
 
     Box(
         modifier = Modifier
@@ -106,24 +116,35 @@ fun ParentSignUpScreen(
                 // Full Name field
                 OutlinedTextField(
                     value = fullName,
-                    onValueChange = { fullName = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
+                    onValueChange = { 
+                        fullName = it
+                        if (fullNameError != null) fullNameError = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Full Name", color = Color.White.copy(alpha = 0.8f)) },
                     placeholder = {
                         Text(
-                            text = "Full Name",
-                            color = Color.White.copy(alpha = 0.6f)
+                            text = "John Doe",
+                            color = Color.White.copy(alpha = 0.4f)
                         )
+                    },
+                    isError = fullNameError != null,
+                    supportingText = {
+                        if (fullNameError != null) {
+                            Text(text = fullNameError!!, color = MaterialTheme.colorScheme.error)
+                        }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedBorderColor = Color.White,
                         unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        cursorColor = Color.White
+                        cursorColor = Color.White,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        errorLeadingIconColor = MaterialTheme.colorScheme.error,
+                        errorSupportingTextColor = MaterialTheme.colorScheme.error
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
@@ -136,24 +157,35 @@ fun ParentSignUpScreen(
                 // Email field
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
+                    onValueChange = { 
+                        email = it
+                        if (emailError != null) emailError = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Email", color = Color.White.copy(alpha = 0.8f)) },
                     placeholder = {
                         Text(
-                            text = "Email",
-                            color = Color.White.copy(alpha = 0.6f)
+                            text = "example@mail.com",
+                            color = Color.White.copy(alpha = 0.4f)
                         )
+                    },
+                    isError = emailError != null,
+                    supportingText = {
+                        if (emailError != null) {
+                            Text(text = emailError!!, color = MaterialTheme.colorScheme.error)
+                        }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedBorderColor = Color.White,
                         unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        cursorColor = Color.White
+                        cursorColor = Color.White,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        errorLeadingIconColor = MaterialTheme.colorScheme.error,
+                        errorSupportingTextColor = MaterialTheme.colorScheme.error
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
                 )
@@ -163,24 +195,35 @@ fun ParentSignUpScreen(
                 // Password field
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
+                    onValueChange = { 
+                        password = it
+                        if (passwordError != null) passwordError = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Password", color = Color.White.copy(alpha = 0.8f)) },
                     placeholder = {
                         Text(
-                            text = "Password",
-                            color = Color.White.copy(alpha = 0.6f)
+                            text = "••••••••",
+                            color = Color.White.copy(alpha = 0.4f)
                         )
+                    },
+                    isError = passwordError != null,
+                    supportingText = {
+                        if (passwordError != null) {
+                            Text(text = passwordError!!, color = MaterialTheme.colorScheme.error)
+                        }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedBorderColor = Color.White,
                         unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        cursorColor = Color.White
+                        cursorColor = Color.White,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        errorLeadingIconColor = MaterialTheme.colorScheme.error,
+                        errorSupportingTextColor = MaterialTheme.colorScheme.error
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
@@ -199,27 +242,38 @@ fun ParentSignUpScreen(
                 // Confirm Password field
                 OutlinedTextField(
                     value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
+                    onValueChange = { 
+                        confirmPassword = it
+                        if (confirmPasswordError != null) confirmPasswordError = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Confirm Password", color = Color.White.copy(alpha = 0.8f)) },
                     placeholder = {
                         Text(
-                            text = "Confirm Password",
-                            color = Color.White.copy(alpha = 0.6f)
+                            text = "••••••••",
+                            color = Color.White.copy(alpha = 0.4f)
                         )
+                    },
+                    isError = confirmPasswordError != null,
+                    supportingText = {
+                        if (confirmPasswordError != null) {
+                            Text(text = confirmPasswordError!!, color = MaterialTheme.colorScheme.error)
+                        }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedBorderColor = Color.White,
                         unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        cursorColor = Color.White
+                        cursorColor = Color.White,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        errorLeadingIconColor = MaterialTheme.colorScheme.error,
+                        errorSupportingTextColor = MaterialTheme.colorScheme.error
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                     trailingIcon = {
                         IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                             Text(
@@ -248,26 +302,34 @@ fun ParentSignUpScreen(
                 Button(
                     onClick = {
                         // Validate inputs
+                        var hasError = false
                         if (fullName.isBlank()) {
-                            errorMessage = "Please enter your full name"
-                            return@Button
+                            fullNameError = "Full name is required"
+                            hasError = true
                         }
                         if (email.isBlank()) {
-                            errorMessage = "Please enter your email"
-                            return@Button
+                            emailError = "Email is required"
+                            hasError = true
+                        } else if (!validateEmail(email)) {
+                            emailError = "Invalid email format"
+                            hasError = true
                         }
                         if (password.isBlank()) {
-                            errorMessage = "Please enter a password"
-                            return@Button
+                            passwordError = "Password is required"
+                            hasError = true
+                        } else if (password.length < 6) {
+                            passwordError = "Password must be at least 6 characters"
+                            hasError = true
                         }
-                        if (password != confirmPassword) {
-                            errorMessage = "Passwords do not match"
-                            return@Button
+                        if (confirmPassword.isBlank()) {
+                            confirmPasswordError = "Please confirm your password"
+                            hasError = true
+                        } else if (password != confirmPassword) {
+                            confirmPasswordError = "Passwords do not match"
+                            hasError = true
                         }
-                        if (password.length < 6) {
-                            errorMessage = "Password must be at least 6 characters"
-                            return@Button
-                        }
+
+                        if (hasError) return@Button
 
                         errorMessage = null
                         isLoading = true
@@ -287,11 +349,16 @@ fun ParentSignUpScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp),
+                        .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF272052)
                     ),
-                    shape = RoundedCornerShape(100.dp),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 2.dp
+                    ),
+                    shape = RoundedCornerShape(16.dp),
                     enabled = !isLoading
                 ) {
                     if (isLoading) {

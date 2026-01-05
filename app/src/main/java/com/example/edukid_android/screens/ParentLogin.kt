@@ -42,12 +42,18 @@ fun ParentSignInScreen(
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var rememberMe by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    fun validateEmail(mail: String): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(mail).matches()
+    }
 
     Box(
         modifier = Modifier
@@ -103,23 +109,35 @@ fun ParentSignInScreen(
                 // Email field
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = { 
+                        email = it
+                        if (emailError != null) emailError = null
+                    },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
+                        .fillMaxWidth(),
+                    label = { Text("Email", color = Color.White.copy(alpha = 0.8f)) },
                     placeholder = {
                         Text(
-                            text = "Email", color = Color.White.copy(alpha = 0.6f)
+                            text = "example@mail.com", color = Color.White.copy(alpha = 0.4f)
                         )
+                    },
+                    isError = emailError != null,
+                    supportingText = {
+                        if (emailError != null) {
+                            Text(text = emailError!!, color = MaterialTheme.colorScheme.error)
+                        }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedBorderColor = Color.White,
                         unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        cursorColor = Color.White
+                        cursorColor = Color.White,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        errorLeadingIconColor = MaterialTheme.colorScheme.error,
+                        errorSupportingTextColor = MaterialTheme.colorScheme.error
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                 )
@@ -129,23 +147,35 @@ fun ParentSignInScreen(
                 // Password field
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
+                    onValueChange = { 
+                        password = it
+                        if (passwordError != null) passwordError = null
+                    },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp),
+                        .fillMaxWidth(),
+                    label = { Text("Password", color = Color.White.copy(alpha = 0.8f)) },
                     placeholder = {
                         Text(
-                            text = "Password", color = Color.White.copy(alpha = 0.6f)
+                            text = "••••••••", color = Color.White.copy(alpha = 0.4f)
                         )
+                    },
+                    isError = passwordError != null,
+                    supportingText = {
+                        if (passwordError != null) {
+                            Text(text = passwordError!!, color = MaterialTheme.colorScheme.error)
+                        }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
                         focusedBorderColor = Color.White,
                         unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                        cursorColor = Color.White
+                        cursorColor = Color.White,
+                        errorBorderColor = MaterialTheme.colorScheme.error,
+                        errorLeadingIconColor = MaterialTheme.colorScheme.error,
+                        errorSupportingTextColor = MaterialTheme.colorScheme.error
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     singleLine = true,
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -216,14 +246,21 @@ fun ParentSignInScreen(
                 Button(
                     onClick = {
                         // Validate inputs
+                        var hasError = false
                         if (email.isBlank()) {
-                            errorMessage = "Please enter your email"
-                            return@Button
+                            emailError = "Email is required"
+                            hasError = true
+                        } else if (!validateEmail(email)) {
+                            emailError = "Invalid email format"
+                            hasError = true
                         }
+
                         if (password.isBlank()) {
-                            errorMessage = "Please enter your password"
-                            return@Button
+                            passwordError = "Password is required"
+                            hasError = true
                         }
+
+                        if (hasError) return@Button
 
                         errorMessage = null
                         isLoading = true
@@ -253,11 +290,16 @@ fun ParentSignInScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp),
+                        .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF272052)
                     ),
-                    shape = RoundedCornerShape(100.dp),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 2.dp
+                    ),
+                    shape = RoundedCornerShape(16.dp),
                     enabled = !isLoading
                 ) {
                     if (isLoading) {

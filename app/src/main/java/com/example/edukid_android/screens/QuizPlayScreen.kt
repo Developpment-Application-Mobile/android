@@ -47,7 +47,7 @@ fun QuizPlayScreen(
     quiz: Quiz?,
     navController: NavController? = null,
     onExit: (() -> Unit)? = null,
-    onQuizSubmitted: (() -> Unit)? = null,
+    onQuizSubmitted: ((Int) -> Unit)? = null,
     parentId: String? = null,
     kidId: String? = null,
     initialTotalScore: Int = 0
@@ -78,6 +78,7 @@ fun QuizPlayScreen(
     var streak by remember { mutableStateOf(0) }
     var showCreditProgress by remember { mutableStateOf(false) }
     var gifts by remember { mutableStateOf<List<ShopItem>>(emptyList()) }
+    var updatedChild by remember { mutableStateOf<Child?>(null) }
     var updatedChildScore by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -675,8 +676,10 @@ fun QuizPlayScreen(
                                                             answers = answers
                                                         )
                                                         submitResult.fold(
-                                                            onSuccess = {
+                                                            onSuccess = { childResponse ->
                                                                 android.util.Log.d("QuizPlayScreen", "Quiz submitted successfully!")
+                                                                val child = childResponse.toChild()
+                                                                updatedChild = child
                                                                 
                                                                 // Track quest progress
                                                                 launch {
@@ -690,7 +693,7 @@ fun QuizPlayScreen(
                                                                     )
                                                                 }
 
-                                                                onQuizSubmitted?.invoke()
+                                                                onQuizSubmitted?.invoke(totalScore - initialTotalScore)
                                                                 onExit?.invoke() ?: navController?.popBackStack()
                                                             },
                                                             onFailure = { e ->
@@ -722,7 +725,9 @@ fun QuizPlayScreen(
                                                             submitResult.fold(
                                                                 onSuccess = { childResponse ->
                                                                     android.util.Log.d("QuizPlayScreen", "Finish button - Quiz submitted successfully!")
-                                                                    updatedChildScore = childResponse.toChild().Score
+                                                                    val child = childResponse.toChild()
+                                                                    updatedChild = child
+                                                                    updatedChildScore = child.Score
 
                                                                     // Track quest progress
                                                                     launch {
@@ -860,7 +865,8 @@ fun QuizPlayScreen(
                 gifts = gifts,
                 onDismiss = {
                     showCreditProgress = false
-                    onQuizSubmitted?.invoke()
+                    showCreditProgress = false
+                    onQuizSubmitted?.invoke(totalScore - initialTotalScore)
                     onExit?.invoke() ?: navController?.popBackStack()
                 }
             )
@@ -1522,7 +1528,7 @@ fun CreditProgressDialog(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "Continue",
+                    text = "Finish & Go Home",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

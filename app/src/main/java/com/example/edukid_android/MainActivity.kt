@@ -33,6 +33,7 @@ import com.example.edukid_android.screens.ParentSignUpScreen
 import com.example.edukid_android.screens.WelcomeScreen
 import com.example.edukid_android.ui.theme.EduKid_androidTheme
 import com.example.edukid_android.utils.PreferencesManager
+import com.example.edukid_android.utils.SessionManager
 import com.example.edukid_android.games.*
 import com.example.edukid_android.utils.ApiClient.apiService
 import com.example.edukid_android.utils.NetworkUtils
@@ -64,10 +65,14 @@ class MainActivity : ComponentActivity() {
                 val initialToken = remember { PreferencesManager.getAccessToken(this@MainActivity) }
                 val initialParent = remember { PreferencesManager.getParentData(this@MainActivity) }
                 
+                // Session manager for child persistence
+                val sessionManager = remember { SessionManager(this@MainActivity) }
+                val initialChild = remember { sessionManager.getChildSession() }
+                
                 // Mutable state for current parent and access token
                 var currentParent by remember { mutableStateOf<Parent?>(initialParent) }
                 var accessToken by remember { mutableStateOf<String?>(initialToken) }
-                var currentChild by remember { mutableStateOf<Child?>(null) }
+                var currentChild by remember { mutableStateOf<Child?>(initialChild) }
                 var currentQuiz by remember { mutableStateOf<Quiz?>(null) }
 
                 val navController = rememberNavController()
@@ -93,6 +98,8 @@ class MainActivity : ComponentActivity() {
                 
                 val startDest = if (!isOnline) {
                     "offlineGames"
+                } else if (initialChild != null) {
+                    "childHome" // Child session exists, go directly to child home
                 } else if (initialToken != null && initialParent != null) {
                     "parentDashboard" 
                 } else {
@@ -155,6 +162,7 @@ class MainActivity : ComponentActivity() {
                         ChildQRLoginScreen(
                             onQRScanned = { child ->
                                 currentChild = child
+                                sessionManager.saveChildSession(child) // Save session
                                 navController.navigate("childHome") {
                                     popUpTo("childLogin") { inclusive = true }
                                 }
@@ -165,17 +173,37 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("childHome") { 
-                        currentChild?.let { child ->
-                            ImprovedChildHomeScreen(
+                        if (currentChild != null) {
+                            com.example.edukid_android.screens.ImprovedChildHomeScreen(
                                 navController = navController,
-                                child = child,
+                                child = currentChild,
                                 onQuizClick = { quiz ->
                                     currentQuiz = quiz
                                     navController.navigate("quizPlay")
+                                },
+                                onChildUpdate = { updatedChild ->
+                                    // Preserve ALL existing child data, only update dynamic fields
+                                    currentChild = currentChild?.copy(
+                                        Score = updatedChild.Score,
+                                        lifetimeScore = updatedChild.lifetimeScore,
+                                        progressionLevel = updatedChild.progressionLevel,
+                                        // Only update lists if they have data (protect against partial responses)
+                                        inventory = if (updatedChild.inventory.isNotEmpty()) updatedChild.inventory else currentChild?.inventory ?: emptyList(),
+                                        quests = if (updatedChild.quests.isNotEmpty()) updatedChild.quests else currentChild?.quests ?: emptyList(),
+                                        shopCatalog = if (updatedChild.shopCatalog.isNotEmpty()) updatedChild.shopCatalog else currentChild?.shopCatalog ?: emptyList()
+                                        // Note: quizzes, name, age, level, avatarEmoji are NOT updated here
+                                    ) ?: currentChild // If copy fails, keep current
+                                    currentChild?.let { sessionManager.updateChildSession(it) }
+                                },
+                                onLogout = {
+                                    sessionManager.clearChildSession()
+                                    currentChild = null
+                                    navController.navigate("childLogin") {
+                                        popUpTo("childHome") { inclusive = true }
+                                    }
                                 }
                             )
-
-                        } ?: run {
+                        } else {
                             // If no child data, navigate back to login
                             LaunchedEffect(Unit) {
                                 navController.navigate("childLogin") {
@@ -297,11 +325,15 @@ class MainActivity : ComponentActivity() {
                                 onExit = {
                                     navController.popBackStack()
                                 },
-                                onQuizSubmitted = {
-                                    currentChild = currentChild?.let { child ->
-                                        val updatedQuizzes = child.quizzes.filter { it.id != quiz.id }
-                                        child.copy(quizzes = updatedQuizzes)
-                                    }
+                                onQuizSubmitted = { earnedScore ->
+                                    // Simple approach: add earned score locally and remove quiz
+                                    currentChild = currentChild?.copy(
+                                        Score = (currentChild?.Score ?: 0) + earnedScore,
+                                        lifetimeScore = (currentChild?.lifetimeScore ?: 0) + earnedScore,
+                                        // Remove the completed quiz from local list
+                                        quizzes = currentChild?.quizzes?.filter { it.id != currentQuiz?.id } ?: emptyList()
+                                    )
+                                    currentChild?.let { sessionManager.updateChildSession(it) }
                                 },
                                 currentChild?.parentId,
                                 currentChild?.id,

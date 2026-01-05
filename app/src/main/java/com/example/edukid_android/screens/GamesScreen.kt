@@ -322,7 +322,7 @@ fun GameCard(
 }
 
 @Composable
-fun BoxScope.DecorativeElementsGames() {
+fun DecorativeElementsGames() {
     Image(
         painter = painterResource(id = R.drawable.education_book),
         contentDescription = "Education Book",

@@ -843,40 +843,6 @@ fun PremiumSortOption(
 }
 
 @Composable
-fun SortOption(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = if (selected) Color(0xFFAF7EE7).copy(alpha = 0.15f) else Color.Transparent,
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = Color(0xFFAF7EE7)
-            )
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            color = if (selected) Color(0xFF2E2E2E) else Color(0xFF666666),
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
 fun StatBox(
     icon: String,
     value: String,
@@ -1041,7 +1007,7 @@ fun QuizResultCard(quiz: Quiz) {
 }
 
 @Composable
-fun BoxScope.DecorativeElementsResults() {
+fun DecorativeElementsResults() {
     Image(
         painter = painterResource(id = R.drawable.education_book),
         contentDescription = "Education Book",

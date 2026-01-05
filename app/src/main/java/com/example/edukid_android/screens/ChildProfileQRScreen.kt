@@ -14,6 +14,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,12 +71,12 @@ fun ChildProfileQRScreen(
     val scope = rememberCoroutineScope()
 
     val subjects = listOf(
-        "🔢" to "Math",
-        "🔬" to "Science",
-        "📖" to "English",
-        "🌍" to "Geography",
-        "⏰" to "History",
-        "🎨" to "Art"
+        R.drawable.math to "Math",
+        R.drawable.ic_science to "Science",
+        R.drawable.english to "English",
+        R.drawable.ic_geography to "Geography",
+        R.drawable.ic_history to "History",
+        R.drawable.art to "Art"
     )
 
     val difficulties = listOf("Easy", "Medium", "Hard")
@@ -116,16 +118,17 @@ fun ChildProfileQRScreen(
                     IconButton(
                         onClick = onBackClick,
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(40.dp)
                             .background(
                                 color = Color.White.copy(alpha = 0.2f),
                                 shape = CircleShape
                             )
                     ) {
-                        Text(
-                            text = "←",
-                            fontSize = 24.sp,
-                            color = Color.White
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -218,11 +221,11 @@ fun ChildProfileQRScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             InfoChip(
-                                icon = "🎂",
+                                iconResId = R.drawable.icon_birthday, // Placeholder for age/cake
                                 text = "${childState.age} years old"
                             )
                             InfoChip(
-                                icon = "📊",
+                                iconResId = R.drawable.icon_level, // Placeholder for level
                                 text = "Level ${childState.level}"
                             )
                         }
@@ -239,7 +242,7 @@ fun ChildProfileQRScreen(
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             StatColumn(
-                                icon = "✅",
+                                iconResId = R.drawable.taskcompleted, // Placeholder
                                 value = "${childState.getCompletedQuizzes().size}",
                                 label = "Completed"
                             )
@@ -251,9 +254,9 @@ fun ChildProfileQRScreen(
                             )
 
                             StatColumn(
-                                icon = "⭐",
-                                value = "${childState.Score}%",
-                                label = "Avg Score"
+                                iconResId = R.drawable.coins, // Placeholder
+                                value = "${childState.Score}",
+                                label = "Score"
                             )
 
                             VerticalDivider(
@@ -263,7 +266,7 @@ fun ChildProfileQRScreen(
                             )
 
                             StatColumn(
-                                icon = "📚",
+                                iconResId = R.drawable.education_book, // Placeholder
                                 value = "${childState.quizzes.size}",
                                 label = "Total"
                             )
@@ -271,9 +274,16 @@ fun ChildProfileQRScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                // Quick Actions Section
+                Text(
+                    text = "Quick Actions",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                    letterSpacing = 0.5.sp
+                )
 
-                // Action Buttons Grid (2x2)
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -283,7 +293,9 @@ fun ChildProfileQRScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Button(
+                        ProfileActionButton(
+                            iconResId = R.drawable.qrcode, // Placeholder
+                            label = "Show QR",
                             onClick = {
                                 if (parentId != null && childState.id != null) {
                                     isLoadingQR = true
@@ -291,7 +303,6 @@ fun ChildProfileQRScreen(
                                     scope.launch {
                                         val result = ApiClient.getQRCode(parentId, childState.id!!)
                                         result.onSuccess { qrResponse ->
-                                            // Decode base64 image
                                             val base64String = qrResponse.qr
                                             val base64Image = if (base64String.startsWith("data:image")) {
                                                 base64String.substringAfter(",")
@@ -318,64 +329,17 @@ fun ChildProfileQRScreen(
                                     qrError = "Missing parent or child ID"
                                 }
                             },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(16.dp),
-                            enabled = !isLoadingQR && parentId != null && child.id != null
-                        ) {
-                            if (isLoadingQR) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = Color(0xFFAF7EE7),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = "📱",
-                                        fontSize = 20.sp
-                                    )
-                                    Text(
-                                        text = "Show QR",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF2E2E2E)
-                                    )
-                                }
-                            }
-                        }
+                            isLoading = isLoadingQR,
+                            enabled = parentId != null && child.id != null,
+                            modifier = Modifier.weight(1f)
+                        )
 
-                        Button(
+                        ProfileActionButton(
+                            iconResId = R.drawable.taskcompleted, // Placeholder
+                            label = "Results",
                             onClick = onViewResultsClick,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "📊",
-                                    fontSize = 20.sp
-                                )
-                                Text(
-                                    text = "Results",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF2E2E2E)
-                                )
-                            }
-                        }
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     // Second row
@@ -383,57 +347,19 @@ fun ChildProfileQRScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Button(
+                        ProfileActionButton(
+                            iconResId = R.drawable.icon_gift, // Placeholder
+                            label = "Gifts",
                             onClick = onGiftManagementClick,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "🎁",
-                                    fontSize = 20.sp
-                                )
-                                Text(
-                                    text = "Gifts",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF2E2E2E)
-                                )
-                            }
-                        }
+                            modifier = Modifier.weight(1f)
+                        )
 
-                        Button(
+                        ProfileActionButton(
+                            iconResId = R.drawable.icon_results, // Placeholder
+                            label = "Review",
                             onClick = onViewReviewClick,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "📋",
-                                    fontSize = 20.sp
-                                )
-                                Text(
-                                    text = "Review",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF2E2E2E)
-                                )
-                            }
-                        }
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
 
@@ -472,9 +398,8 @@ fun ChildProfileQRScreen(
                             .padding(20.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AISparkleIcon()
 
-                        Spacer(modifier = Modifier.width(16.dp))
+//                        Spacer(modifier = Modifier.width(16.dp))
 
                         Column(
                             modifier = Modifier.weight(1f)
@@ -529,9 +454,11 @@ fun ChildProfileQRScreen(
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "🎯",
-                                    fontSize = 24.sp
+                                Image(
+                                    painter = painterResource(id = R.drawable.icon_generator), // Placeholder for target
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    contentScale = ContentScale.Fit
                                 )
                             }
 
@@ -620,9 +547,10 @@ fun ChildProfileQRScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(
-                                        text = "🚀",
-                                        fontSize = 18.sp
+                                    Image(
+                                        painter = painterResource(id = R.drawable.taskcompleted), // Placeholder for rocket
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                     Text(
                                         text = "GENERATE SMART QUIZ",
@@ -700,9 +628,9 @@ fun ChildProfileQRScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            subjects.take(3).forEach { (icon, subject) ->
+                            subjects.take(3).forEach { (iconResId, subject) ->
                                 SubjectOption(
-                                    icon = icon,
+                                    iconResId = iconResId,
                                     subject = subject,
                                     isSelected = selectedSubject == subject,
                                     onClick = { selectedSubject = subject }
@@ -716,9 +644,9 @@ fun ChildProfileQRScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            subjects.drop(3).forEach { (icon, subject) ->
+                            subjects.drop(3).forEach { (iconResId, subject) ->
                                 SubjectOption(
-                                    icon = icon,
+                                    iconResId = iconResId,
                                     subject = subject,
                                     isSelected = selectedSubject == subject,
                                     onClick = { selectedSubject = subject }
@@ -928,9 +856,10 @@ fun ChildProfileQRScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "✨",
-                                fontSize = 20.sp
+                            Image(
+                                painter = painterResource(id = R.drawable.taskcompleted), // Placeholder for sparkle
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
                             )
                             Text(
                                 text = "GENERATE CUSTOM QUIZ",
@@ -954,6 +883,7 @@ fun ChildProfileQRScreen(
             child = childState,
             qrBitmap = qrCodeBitmap,
             onDismiss = { 
+                showQRDialog = false
                 qrError = null
             }
         )
@@ -1072,55 +1002,10 @@ fun ChildProfileQRScreen(
     }
 }
 
-@Composable
-fun AISparkleIcon() {
-    val infiniteTransition = rememberInfiniteTransition(label = "sparkle")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
-
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(50.dp)
-            .background(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFFAF7EE7).copy(alpha = 0.3f),
-                        Color(0xFFAF7EE7).copy(alpha = 0.1f)
-                    )
-                ),
-                shape = CircleShape
-            )
-            .scale(scale)
-            .rotate(rotation),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "✨",
-            fontSize = 28.sp
-        )
-    }
-}
 
 @Composable
 fun InfoChip(
-    icon: String,
+    iconResId: Int,
     text: String
 ) {
     Row(
@@ -1133,9 +1018,11 @@ fun InfoChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Text(
-            text = icon,
-            fontSize = 14.sp
+        Image(
+            painter = painterResource(id = iconResId),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            contentScale = ContentScale.Fit
         )
         Text(
             text = text,
@@ -1148,21 +1035,33 @@ fun InfoChip(
 
 @Composable
 fun StatColumn(
-    icon: String,
+    iconResId: Int,
     value: String,
     label: String
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = icon,
-            fontSize = 20.sp
-        )
-        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(
+                    color = Color(0xFFAF7EE7).copy(alpha = 0.1f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = iconResId),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                contentScale = ContentScale.Fit
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = value,
-            fontSize = 22.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF2E2E2E)
         )
@@ -1176,7 +1075,7 @@ fun StatColumn(
 
 @Composable
 fun SubjectOption(
-    icon: String,
+    iconResId: Int,
     subject: String,
     isSelected: Boolean,
     onClick: () -> Unit
@@ -1199,9 +1098,11 @@ fun SubjectOption(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = icon,
-                fontSize = 26.sp
+            Image(
+                painter = painterResource(id = iconResId),
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                contentScale = ContentScale.Fit
             )
         }
         Spacer(modifier = Modifier.height(6.dp))
@@ -1350,7 +1251,7 @@ fun QRCodeDialog(
 }
 
 @Composable
-fun BoxScope.DecorativeElementsProfile() {
+fun DecorativeElementsProfile() {
     Image(
         painter = painterResource(id = R.drawable.education_book),
         contentDescription = "Education Book",
@@ -1379,6 +1280,70 @@ fun BoxScope.DecorativeElementsProfile() {
             .rotate(38.66f),
         contentScale = ContentScale.Fit
     )
+}
+
+@Composable
+fun ProfileActionButton(
+    iconResId: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
+    enabled: Boolean = true
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(90.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.White.copy(alpha = 0.95f),
+            disabledContainerColor = Color.White.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(22.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 0.dp
+        ),
+        enabled = enabled && !isLoading,
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color(0xFFAF7EE7),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            color = Color(0xFFAF7EE7).copy(alpha = 0.1f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = iconResId),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E2E2E)
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true, widthDp = 375, heightDp = 812)

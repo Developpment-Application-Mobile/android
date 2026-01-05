@@ -347,7 +347,7 @@ fun score(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = painterResource(id = R.drawable.coins),
+                painter =if (label == "Score") painterResource(id = R.drawable.coins) else painterResource(id = R.drawable.taskcompleted),
                 contentDescription = "Coins",
                 modifier = Modifier
                     .size(30.dp)
@@ -370,7 +370,7 @@ fun score(
 }
 
 @Composable
-fun BoxScope.DecorativeElementsDashboard() {
+fun DecorativeElementsDashboard() {
     // Education Book - Top Left (smaller)
     Image(
         painter = painterResource(id = R.drawable.education_book),

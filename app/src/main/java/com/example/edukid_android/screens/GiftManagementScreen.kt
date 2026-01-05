@@ -1,9 +1,6 @@
 package com.example.edukid_android.screens
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -50,7 +47,7 @@ fun GiftManagementScreen(
     LaunchedEffect(parentId, child.id) {
         if (parentId != null && child.id != null) {
             isLoading = true
-            val result = ApiClient.getGifts(parentId, child.id!!)
+            val result = ApiClient.getGifts(parentId, child.id)
             result.onSuccess { giftList ->
                 gifts = giftList
                 isLoading = false
@@ -252,14 +249,16 @@ fun GiftManagementScreen(
                                         scope.launch {
                                             val result = ApiClient.createGift(
                                                 parentId = parentId,
-                                                kidId = child.id!!,
+                                                kidId = child.id,
                                                 title = giftTitle,
                                                 cost = costInt
                                             )
                                             result.onSuccess {
                                                 val createdTitle = giftTitle
                                                 // Reload gifts
-                                                val reloadResult = ApiClient.getGifts(parentId, child.id!!)
+                                                val reloadResult = ApiClient.getGifts(parentId,
+                                                    child.id
+                                                )
                                                 reloadResult.onSuccess { giftList ->
                                                     gifts = giftList
                                                 }
@@ -386,12 +385,14 @@ fun GiftManagementScreen(
                                     scope.launch {
                                         val result = ApiClient.deleteGift(
                                             parentId = parentId,
-                                            kidId = child.id!!,
-                                            giftId = gift.id!!
+                                            kidId = child.id,
+                                            giftId = gift.id
                                         )
                                         result.onSuccess {
                                             // Reload gifts
-                                            val reloadResult = ApiClient.getGifts(parentId, child.id!!)
+                                            val reloadResult = ApiClient.getGifts(parentId,
+                                                child.id
+                                            )
                                             reloadResult.onSuccess { giftList ->
                                                 gifts = giftList
                                             }

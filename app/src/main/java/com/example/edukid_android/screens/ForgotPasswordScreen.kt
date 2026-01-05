@@ -229,7 +229,7 @@ fun ForgotPasswordScreen(
 }
 
 @Composable
-fun BoxScope.DecorativeElementsForgotPassword() {
+fun DecorativeElementsForgotPassword() {
     // Education Book - Top Left (smaller)
     Image(
         painter = painterResource(id = R.drawable.education_book),
