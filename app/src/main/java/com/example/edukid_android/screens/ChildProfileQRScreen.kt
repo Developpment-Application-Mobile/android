@@ -384,13 +384,31 @@ fun ChildProfileQRScreen(
                             iconResId = R.drawable.icon_generator, // Placeholder
                             label = "Schedule",
                             onClick = onScheduleActivitiesClick,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            )
+                        ProfileActionButton(
+                            iconResId = R.drawable.icon_total, // Placeholder
+
+                            label = "Create Puzzle",
+                            onClick = { showPuzzleCreation = true },
+                            modifier = Modifier.weight(1f)
+                        )
+
+
+                        
+
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ProfileActionButton(
                             iconResId = R.drawable.icon_level,
                             label = "Create Puzzle",
                             onClick = { showPuzzleCreation = true },
                             modifier = Modifier.weight(1f)
                         )
-                        
+
                         ProfileActionButton(
                             iconResId = R.drawable.icon_results,
                             label = "Show Activities",
@@ -398,6 +416,12 @@ fun ChildProfileQRScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
+                    ProfileActionButton(
+                        iconResId = R.drawable.icon_results,
+                        label = "Show Activities",
+                        onClick = { showActivitiesDialog = true },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

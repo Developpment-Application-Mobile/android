@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -39,14 +40,20 @@ import com.example.edukid_android.components.BottomNavigationBar
 import com.example.edukid_android.models.Child
 import com.example.edukid_android.models.Quiz
 import com.example.edukid_android.models.QuizType
+import com.example.edukid_android.models.Question
 import com.example.edukid_android.models.InventoryItem
 import com.example.edukid_android.models.ShopItem
+import com.example.edukid_android.models.ScheduledActivity
 import com.example.edukid_android.models.getBackgroundColor
 import com.example.edukid_android.models.getIconRes
 import com.example.edukid_android.models.getProgressColor
+import com.example.edukid_android.repositories.ScheduledActivityRepository
 import com.example.edukid_android.utils.ApiClient
 import com.example.edukid_android.utils.getAvatarResource
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
 
 
 @Composable
@@ -88,13 +95,96 @@ fun ImprovedChildHomeScreen(
         childState?.quizzes ?: emptyList()
     }
 
-    val filteredQuizzes = remember(selectedFilter, allQuizzes) {
-        val quizzes = if (selectedFilter == null) {
-            allQuizzes
-        } else {
-            allQuizzes.filter { it.type == selectedFilter }
+    // Get scheduled quiz activities and convert them to Quiz objects
+    var scheduledQuizActivities by remember { mutableStateOf<List<ScheduledActivity>>(emptyList()) }
+    val context = LocalContext.current
+    val repository = remember { ScheduledActivityRepository(context) }
+    
+    // Fetch scheduled activities
+    LaunchedEffect(childState) {
+        val currentChild = childState
+        if (currentChild?.parentId != null && currentChild.id != null) {
+            scope.launch {
+                try {
+                    val activities = repository.getActivities(currentChild.parentId!!, currentChild.id!!)
+                    scheduledQuizActivities = activities.filter { 
+                        it.activityType == ScheduledActivity.ActivityType.QUIZ && !it.isCompleted 
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ChildHomeScreen", "Error fetching scheduled activities", e)
+                }
+            }
         }
-        quizzes.filter { !it.isAnswered }
+    }
+
+    // Real-time countdown updates for scheduled quizzes
+    LaunchedEffect(scheduledQuizActivities) {
+        if (scheduledQuizActivities.isNotEmpty()) {
+            while (true) {
+                kotlinx.coroutines.delay(1000) // Update every second
+                // Trigger recomposition by updating the list
+                val currentChild = childState
+                if (currentChild?.parentId != null && currentChild.id != null) {
+                    scope.launch {
+                        try {
+                            val activities = repository.getActivities(currentChild.parentId!!, currentChild.id!!)
+                            scheduledQuizActivities = activities.filter { 
+                                it.activityType == ScheduledActivity.ActivityType.QUIZ && !it.isCompleted 
+                            }
+                        } catch (e: Exception) {
+                            // Ignore errors during updates
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Convert scheduled quiz activities to Quiz objects and combine with regular quizzes
+    val combinedQuizzes = remember(allQuizzes, scheduledQuizActivities) {
+        val scheduledAsQuizzes = scheduledQuizActivities.mapNotNull { activity ->
+            activity.quizData?.let { quizData ->
+                val quizType = try {
+                    QuizType.valueOf(quizData.subject.uppercase())
+                } catch (e: Exception) {
+                    QuizType.GENERAL
+                }
+                
+                // Try to find the original quiz from the child's quiz list to get question count
+                val originalQuiz = allQuizzes.find { it.id == quizData.id }
+                val questionCount = originalQuiz?.questions?.size ?: 5 // Default to 5 if not found
+                
+                Quiz(
+                    id = activity.id, // Use activity ID to distinguish from regular quizzes
+                    title = "${activity.title} ${if (activity.isAvailable) "🔓" else "🔒"}",
+                    type = quizType,
+                    questions = List(questionCount) { 
+                        // Create dummy questions for display purposes
+                        Question(
+                            questionText = "Loading...",
+                            options = emptyList(),
+                            correctAnswerIndex = 0
+                        )
+                    },
+                    isAnswered = false,
+                    score = 0,
+                    isScheduled = true,
+                    scheduledTime = activity.scheduledTime,
+                    isAvailable = activity.isAvailable
+                )
+            }
+        }
+        allQuizzes + scheduledAsQuizzes
+    }
+
+    val filteredQuizzes = remember(selectedFilter, combinedQuizzes) {
+        val quizzes = if (selectedFilter == null) {
+            combinedQuizzes
+        } else {
+            combinedQuizzes.filter { it.type == selectedFilter }
+        }
+        // Show scheduled quizzes even if answered, but filter regular quizzes
+        quizzes.filter { it.isScheduled == true || !it.isAnswered }
     }
 
     val inProgressQuizzes = remember(filteredQuizzes) {
@@ -663,7 +753,40 @@ fun ImprovedChildHomeScreen(
                         inProgressQuizzes.forEach { quiz ->
                             PremiumQuizCard(
                                 quiz = quiz,
-                                onClick = { onQuizClick(quiz) }
+                                onClick = { 
+                                    if (quiz.isScheduled && !quiz.isAvailable) {
+                                        // Don't allow clicking locked scheduled quizzes
+                                        return@PremiumQuizCard
+                                    }
+                                    
+                                    // For scheduled quizzes, we need to load the full quiz data
+                                    if (quiz.isScheduled) {
+                                        // Find the original quiz from the scheduled activities
+                                        val scheduledActivity = scheduledQuizActivities.find { it.id == quiz.id }
+                                        if (scheduledActivity?.quizData != null) {
+                                            // Load the full child data to get the complete quiz
+                                            scope.launch {
+                                                try {
+                                                    val childResponse = ApiClient.apiService.getChildById(childState?.id ?: "")
+                                                    if (childResponse.isSuccessful && childResponse.body() != null) {
+                                                        val child = childResponse.body()!!.toChild()
+                                                        // Find the original quiz by ID
+                                                        val originalQuiz = child.quizzes.find { it.id == scheduledActivity.quizData!!.id }
+                                                        if (originalQuiz != null) {
+                                                            onQuizClick(originalQuiz)
+                                                        } else {
+                                                            android.util.Log.e("ChildHomeScreen", "Original quiz not found: ${scheduledActivity.quizData!!.id}")
+                                                        }
+                                                    }
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("ChildHomeScreen", "Error loading scheduled quiz", e)
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        onQuizClick(quiz)
+                                    }
+                                }
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
@@ -684,18 +807,86 @@ fun ImprovedChildHomeScreen(
                         notStartedQuizzes.forEach { quiz ->
                             PremiumQuizCard(
                                 quiz = quiz,
-                                onClick = { onQuizClick(quiz) }
+                                onClick = { 
+                                    if (quiz.isScheduled && !quiz.isAvailable) {
+                                        // Don't allow clicking locked scheduled quizzes
+                                        return@PremiumQuizCard
+                                    }
+                                    
+                                    // For scheduled quizzes, we need to load the full quiz data
+                                    if (quiz.isScheduled) {
+                                        // Find the original quiz from the scheduled activities
+                                        val scheduledActivity = scheduledQuizActivities.find { it.id == quiz.id }
+                                        if (scheduledActivity?.quizData != null) {
+                                            // Load the full child data to get the complete quiz
+                                            scope.launch {
+                                                try {
+                                                    val childResponse = ApiClient.apiService.getChildById(childState?.id ?: "")
+                                                    if (childResponse.isSuccessful && childResponse.body() != null) {
+                                                        val child = childResponse.body()!!.toChild()
+                                                        // Find the original quiz by ID
+                                                        val originalQuiz = child.quizzes.find { it.id == scheduledActivity.quizData!!.id }
+                                                        if (originalQuiz != null) {
+                                                            onQuizClick(originalQuiz)
+                                                        } else {
+                                                            android.util.Log.e("ChildHomeScreen", "Original quiz not found: ${scheduledActivity.quizData!!.id}")
+                                                        }
+                                                    }
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("ChildHomeScreen", "Error loading scheduled quiz", e)
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        onQuizClick(quiz)
+                                    }
+                                }
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
 
-                    // Puzzles Section (from backend)
+                    // Puzzles Section (from backend + scheduled)
                     val backendPuzzles = remember(childState) {
                         childState?.puzzles ?: emptyList()
                     }
                     
-                    if (backendPuzzles.isNotEmpty()) {
+                    // Get scheduled puzzle activities
+                    val scheduledPuzzleActivities = remember(scheduledQuizActivities) {
+                        // We'll fetch all scheduled activities, not just quiz ones
+                        emptyList<ScheduledActivity>()
+                    }
+                    
+                    var allScheduledActivities by remember { mutableStateOf<List<ScheduledActivity>>(emptyList()) }
+                    
+                    // Fetch all scheduled activities (including puzzles)
+                    LaunchedEffect(childState) {
+                        val currentChild = childState
+                        if (currentChild?.parentId != null && currentChild.id != null) {
+                            scope.launch {
+                                try {
+                                    val activities = repository.getActivities(currentChild.parentId!!, currentChild.id!!)
+                                    allScheduledActivities = activities.filter { !it.isCompleted }
+                                    // Update quiz activities
+                                    scheduledQuizActivities = activities.filter { 
+                                        it.activityType == ScheduledActivity.ActivityType.QUIZ && !it.isCompleted 
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("ChildHomeScreen", "Error fetching scheduled activities", e)
+                                }
+                            }
+                        }
+                    }
+                    
+                    val scheduledPuzzles = remember(allScheduledActivities) {
+                        allScheduledActivities.filter { 
+                            it.activityType == ScheduledActivity.ActivityType.PUZZLE 
+                        }
+                    }
+                    
+                    val hasPuzzles = backendPuzzles.isNotEmpty() || scheduledPuzzles.isNotEmpty()
+                    
+                    if (hasPuzzles) {
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         Text(
@@ -712,6 +903,43 @@ fun ImprovedChildHomeScreen(
                                 onClick = {
                                     selectedPuzzle = puzzle
                                     showPuzzlePlay = true
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                        
+                        // Show scheduled puzzles
+                        scheduledPuzzles.forEach { scheduledPuzzle ->
+                            ScheduledPuzzleCard(
+                                activity = scheduledPuzzle,
+                                onClick = {
+                                    if (scheduledPuzzle.isAvailable) {
+                                        // Handle scheduled puzzle click
+                                        when (scheduledPuzzle.activityType) {
+                                            ScheduledActivity.ActivityType.PUZZLE -> {
+                                                // For scheduled puzzles, we need to create a puzzle response to play
+                                                scheduledPuzzle.puzzleType?.let { puzzleType ->
+                                                    // Create a mock puzzle response for scheduled puzzles
+                                                    val mockPuzzle = com.example.edukid_android.models.PuzzleResponse(
+                                                        _id = puzzleType.id,
+                                                        title = puzzleType.title,
+                                                        type = "IMAGE", // Default type
+                                                        difficulty = "EASY", // Default difficulty
+                                                        gridSize = 4, // Default grid size
+                                                        pieces = emptyList(), // Will be generated in play screen
+                                                        isCompleted = false,
+                                                        score = 0,
+                                                        timeSpent = 0
+                                                    )
+                                                    selectedPuzzle = mockPuzzle
+                                                    showPuzzlePlay = true
+                                                }
+                                            }
+                                            else -> {
+                                                // Handle other activity types if needed
+                                            }
+                                        }
+                                    }
                                 }
                             )
                             Spacer(modifier = Modifier.height(12.dp))
@@ -1108,6 +1336,7 @@ fun PremiumQuizCard(
 ) {
     val progress = quiz.getCompletionPercentage()
     val isInProgress = progress in 1..99
+    val isScheduledAndLocked = quiz.isScheduled && !quiz.isAvailable
 
     // Smooth animation for progress value
     val animatedProgress by animateFloatAsState(
@@ -1119,11 +1348,14 @@ fun PremiumQuizCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .clickable(onClick = onClick),
+            .clickable(enabled = !isScheduledAndLocked, onClick = onClick),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.85f)
+            containerColor = if (isScheduledAndLocked) 
+                Color.White.copy(alpha = 0.5f) 
+            else 
+                Color.White.copy(alpha = 0.85f)
         )
     ) {
         Column(
@@ -1132,8 +1364,8 @@ fun PremiumQuizCard(
                 .background(
                     brush = Brush.verticalGradient(
                         listOf(
-                            quiz.type.getBackgroundColor().copy(alpha = 0.12f),
-                            Color.White.copy(alpha = 0.9f)
+                            quiz.type.getBackgroundColor().copy(alpha = if (isScheduledAndLocked) 0.06f else 0.12f),
+                            Color.White.copy(alpha = if (isScheduledAndLocked) 0.45f else 0.9f)
                         )
                     )
                 )
@@ -1150,8 +1382,8 @@ fun PremiumQuizCard(
                         .background(
                             brush = Brush.linearGradient(
                                 listOf(
-                                    quiz.type.getBackgroundColor().copy(alpha = 0.25f),
-                                    quiz.type.getBackgroundColor().copy(alpha = 0.45f)
+                                    quiz.type.getBackgroundColor().copy(alpha = if (isScheduledAndLocked) 0.12f else 0.25f),
+                                    quiz.type.getBackgroundColor().copy(alpha = if (isScheduledAndLocked) 0.22f else 0.45f)
                                 )
                             ),
                             shape = RoundedCornerShape(20.dp)
@@ -1161,8 +1393,25 @@ fun PremiumQuizCard(
                     Image(
                         painter = painterResource(id = quiz.type.getIconRes()),
                         contentDescription = quiz.title,
-                        modifier = Modifier.size(42.dp)
+                        modifier = Modifier.size(42.dp),
+                        alpha = if (isScheduledAndLocked) 0.5f else 1f
                     )
+                    
+                    // Lock overlay for scheduled quizzes
+                    if (isScheduledAndLocked) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                                .align(Alignment.BottomEnd),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "🔒",
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(18.dp))
@@ -1172,17 +1421,56 @@ fun PremiumQuizCard(
                         text = quiz.title,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1E1E1E)
+                        color = if (isScheduledAndLocked) Color(0xFF1E1E1E).copy(alpha = 0.6f) else Color(0xFF1E1E1E)
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    Text(
-                        text = "${quiz.questions.size} Questions • ${quiz.type.toString().uppercase()}",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF6A6A6A)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "${quiz.questions.size} Questions • ${quiz.type.toString().uppercase()}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isScheduledAndLocked) Color(0xFF6A6A6A).copy(alpha = 0.6f) else Color(0xFF6A6A6A)
+                        )
+                        
+                        if (quiz.isScheduled) {
+                            Text(
+                                text = "• SCHEDULED",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (quiz.isAvailable) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                            )
+                        }
+                    }
+
+                    // Show countdown for scheduled quizzes
+                    if (quiz.isScheduled && !quiz.isAvailable) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val timeRemaining = quiz.scheduledTime - System.currentTimeMillis()
+                        val timeText = when {
+                            timeRemaining > 0 -> {
+                                val hours = TimeUnit.MILLISECONDS.toHours(timeRemaining)
+                                val minutes = TimeUnit.MILLISECONDS.toMinutes(timeRemaining) % 60
+                                when {
+                                    hours > 0 -> "Unlocks in ${hours}h ${minutes}m"
+                                    minutes > 0 -> "Unlocks in ${minutes}m"
+                                    else -> "Unlocking soon..."
+                                }
+                            }
+                            else -> "Available now!"
+                        }
+                        
+                        Text(
+                            text = "⏰ $timeText",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFFF9800)
+                        )
+                    }
 
                     if (isInProgress) {
                         Spacer(modifier = Modifier.height(12.dp))
@@ -1234,8 +1522,8 @@ fun PremiumQuizCard(
                         .background(
                             brush = Brush.radialGradient(
                                 listOf(
-                                    quiz.type.getProgressColor(),
-                                    quiz.type.getProgressColor().copy(alpha = 0.75f)
+                                    if (isScheduledAndLocked) Color.Gray else quiz.type.getProgressColor(),
+                                    if (isScheduledAndLocked) Color.Gray.copy(alpha = 0.75f) else quiz.type.getProgressColor().copy(alpha = 0.75f)
                                 )
                             ),
                             shape = CircleShape
@@ -1243,8 +1531,12 @@ fun PremiumQuizCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (isInProgress) "▶" else "🚀",
-                        fontSize = if (isInProgress) 20.sp else 26.sp,
+                        text = when {
+                            isScheduledAndLocked -> "🔒"
+                            isInProgress -> "▶"
+                            else -> "🚀"
+                        },
+                        fontSize = if (isInProgress || isScheduledAndLocked) 20.sp else 26.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -1652,6 +1944,404 @@ fun PuzzleCard(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF6A6A6A)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ScheduledActivitiesSection(
+    child: Child?,
+    onActivityClick: (ScheduledActivity) -> Unit
+) {
+    val context = LocalContext.current
+    val repository = remember { ScheduledActivityRepository(context) }
+    var scheduledActivities by remember { mutableStateOf<List<ScheduledActivity>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // Fetch scheduled activities
+    LaunchedEffect(child) {
+        if (child?.parentId != null && child.id != null) {
+            isLoading = true
+            scope.launch {
+                try {
+                    val activities = repository.getActivities(child.parentId!!, child.id!!)
+                    // Filter to show only upcoming activities (not completed and scheduled for future)
+                    scheduledActivities = activities.filter { 
+                        !it.isCompleted && it.scheduledTime > System.currentTimeMillis() 
+                    }.sortedBy { it.scheduledTime }
+                } catch (e: Exception) {
+                    android.util.Log.e("ScheduledActivities", "Error fetching activities", e)
+                } finally {
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    // Real-time countdown updates
+    LaunchedEffect(scheduledActivities) {
+        if (scheduledActivities.isNotEmpty()) {
+            while (true) {
+                kotlinx.coroutines.delay(1000) // Update every second
+                // Trigger recomposition by updating a dummy state
+                scheduledActivities = scheduledActivities.toList()
+            }
+        }
+    }
+
+    if (scheduledActivities.isNotEmpty() || isLoading) {
+        Column {
+            Text(
+                text = "📅 Upcoming Activities",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            if (isLoading) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.15f)
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color.White)
+                    }
+                }
+            } else {
+                scheduledActivities.forEach { activity ->
+                    ScheduledActivityCard(
+                        activity = activity,
+                        onClick = { onActivityClick(activity) }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ScheduledActivityCard(
+    activity: ScheduledActivity,
+    onClick: () -> Unit
+) {
+    val timeRemaining = activity.timeRemaining
+    val isAvailable = activity.isAvailable
+    
+    val timeText = when {
+        isAvailable -> "Available Now!"
+        timeRemaining > 0 -> {
+            val hours = TimeUnit.MILLISECONDS.toHours(timeRemaining)
+            val minutes = TimeUnit.MILLISECONDS.toMinutes(timeRemaining) % 60
+            val seconds = TimeUnit.MILLISECONDS.toSeconds(timeRemaining) % 60
+            
+            when {
+                hours > 0 -> "${hours}h ${minutes}m"
+                minutes > 0 -> "${minutes}m ${seconds}s"
+                else -> "${seconds}s"
+            }
+        }
+        else -> "Starting soon..."
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = isAvailable, onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isAvailable) Color.White.copy(alpha = 0.95f) else Color.White.copy(alpha = 0.8f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            activity.activityType.color.copy(alpha = 0.1f),
+                            Color.Transparent
+                        )
+                    )
+                )
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Activity Type Icon
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                activity.activityType.color.copy(alpha = 0.3f),
+                                activity.activityType.color.copy(alpha = 0.1f)
+                            )
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = when (activity.activityType) {
+                        ScheduledActivity.ActivityType.QUIZ -> "📚"
+                        ScheduledActivity.ActivityType.GAME -> "🎮"
+                        ScheduledActivity.ActivityType.PUZZLE -> "🧩"
+                    },
+                    fontSize = 24.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = activity.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E2E2E),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = activity.description,
+                    fontSize = 13.sp,
+                    color = Color(0xFF666666),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                Spacer(modifier = Modifier.height(6.dp))
+                
+                // Countdown or availability status
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = if (isAvailable) Color(0xFF4CAF50).copy(alpha = 0.15f) else activity.activityType.color.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (isAvailable) "⏰ $timeText" else "⏳ $timeText",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isAvailable) Color(0xFF4CAF50) else activity.activityType.color
+                        )
+                    }
+                    
+                    // Duration badge
+                    Text(
+                        text = "• ${activity.duration / 60000}min",
+                        fontSize = 11.sp,
+                        color = Color(0xFF999999)
+                    )
+                }
+            }
+
+            // Action button
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = if (isAvailable) activity.activityType.color else Color(0xFFCCCCCC),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isAvailable) "▶" else "⏰",
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+@Composable
+fun ScheduledPuzzleCard(
+    activity: ScheduledActivity,
+    onClick: () -> Unit
+) {
+    val isScheduledAndLocked = !activity.isAvailable
+    val timeRemaining = if (isScheduledAndLocked) activity.timeRemaining else 0L
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clickable(enabled = !isScheduledAndLocked, onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isScheduledAndLocked) 
+                Color.White.copy(alpha = 0.5f) 
+            else 
+                Color.White.copy(alpha = 0.85f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            activity.activityType.color.copy(alpha = if (isScheduledAndLocked) 0.06f else 0.12f),
+                            Color.White.copy(alpha = if (isScheduledAndLocked) 0.45f else 0.9f)
+                        )
+                    )
+                )
+                .padding(18.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Puzzle Icon - same size as other cards
+                Box(
+                    modifier = Modifier
+                        .size(70.dp)
+                        .shadow(6.dp, RoundedCornerShape(20.dp))
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    activity.activityType.color.copy(alpha = if (isScheduledAndLocked) 0.12f else 0.25f),
+                                    activity.activityType.color.copy(alpha = if (isScheduledAndLocked) 0.22f else 0.45f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(20.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🧩",
+                        fontSize = 36.sp,
+                        modifier = Modifier.alpha(if (isScheduledAndLocked) 0.5f else 1f)
+                    )
+                    
+                    // Lock overlay for scheduled puzzles
+                    if (isScheduledAndLocked) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                                .align(Alignment.BottomEnd),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "🔒",
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(18.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = activity.title,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isScheduledAndLocked) Color(0xFF1E1E1E).copy(alpha = 0.6f) else Color(0xFF1E1E1E)
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = activity.description,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isScheduledAndLocked) Color(0xFF6A6A6A).copy(alpha = 0.6f) else Color(0xFF6A6A6A),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        
+                        Text(
+                            text = "•",
+                            fontSize = 13.sp,
+                            color = Color(0xFF6A6A6A)
+                        )
+                        
+                        Text(
+                            text = "SCHEDULED",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (activity.isAvailable) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                        )
+                    }
+
+                    // Show countdown for scheduled puzzles - more compact
+                    if (isScheduledAndLocked) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val timeText = when {
+                            timeRemaining > 0 -> {
+                                val hours = TimeUnit.MILLISECONDS.toHours(timeRemaining)
+                                val minutes = TimeUnit.MILLISECONDS.toMinutes(timeRemaining) % 60
+                                when {
+                                    hours > 0 -> "Unlocks in ${hours}h ${minutes}m"
+                                    minutes > 0 -> "Unlocks in ${minutes}m"
+                                    else -> "Unlocking soon..."
+                                }
+                            }
+                            else -> "Available now!"
+                        }
+                        
+                        Text(
+                            text = "⏰ $timeText",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFFF9800)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                // Play button - same size as other cards
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .shadow(8.dp, CircleShape)
+                        .background(
+                            brush = Brush.radialGradient(
+                                listOf(
+                                    if (isScheduledAndLocked) Color.Gray else activity.activityType.color,
+                                    if (isScheduledAndLocked) Color.Gray.copy(alpha = 0.75f) else activity.activityType.color.copy(alpha = 0.75f)
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isScheduledAndLocked) "🔒" else "▶",
+                        fontSize = 20.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

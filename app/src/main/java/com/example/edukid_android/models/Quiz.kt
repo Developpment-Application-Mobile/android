@@ -9,7 +9,10 @@ data class Quiz(
     val type: QuizType,
     val isAnswered: Boolean = false,
     val score: Int? = null,
-    val questions: List<Question>
+    val questions: List<Question>,
+    val isScheduled: Boolean = false,
+    val scheduledTime: Long = 0L,
+    val isAvailable: Boolean = true
 ) {
 
     fun getCompletionPercentage(): Int {

@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
    // private const val BASE_URL = "https://tractile-trang-adaptively.ngrok-free.dev/"
-    // private const val BASE_URL = "https://accessorial-zaida-soggily.ngrok-free.dev/"
-    private const val BASE_URL = "https://preterrestrial-georgann-recappable.ngrok-free.dev/"
+     private const val BASE_URL = "https://accessorial-zaida-soggily.ngrok-free.dev/"
+    // private const val BASE_URL = "https://preterrestrial-georgann-recappable.ngrok-free.dev/"
 
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

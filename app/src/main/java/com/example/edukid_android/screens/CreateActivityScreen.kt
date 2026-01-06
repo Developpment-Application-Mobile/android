@@ -328,8 +328,47 @@ fun CreateActivityScreen(
         )
     }
 
-    // Date/Time Pickers (using Material Dialogs or similar library)
-    // TODO: Implement date/time pickers
+    // Date Picker Dialog
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = scheduledDate.timeInMillis
+        )
+        
+        DatePickerDialog(
+            onDateSelected = { selectedMillis ->
+                selectedMillis?.let {
+                    val newCalendar = Calendar.getInstance().apply {
+                        timeInMillis = it
+                        set(Calendar.HOUR_OF_DAY, scheduledDate.get(Calendar.HOUR_OF_DAY))
+                        set(Calendar.MINUTE, scheduledDate.get(Calendar.MINUTE))
+                    }
+                    scheduledDate = newCalendar
+                }
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
+        )
+    }
+
+    // Time Picker Dialog
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = scheduledDate.get(Calendar.HOUR_OF_DAY),
+            initialMinute = scheduledDate.get(Calendar.MINUTE)
+        )
+        
+        TimePickerDialog(
+            onTimeSelected = { hour, minute ->
+                val newCalendar = scheduledDate.clone() as Calendar
+                newCalendar.set(Calendar.HOUR_OF_DAY, hour)
+                newCalendar.set(Calendar.MINUTE, minute)
+                scheduledDate = newCalendar
+                showTimePicker = false
+            },
+            onDismiss = { showTimePicker = false },
+            timePickerState = timePickerState
+        )
+    }
 }
 
 @Composable
@@ -781,3 +820,76 @@ fun PuzzleSelectionSheet(
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerDialog(
+    onDateSelected: (Long?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState()
+    
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onDateSelected(datePickerState.selectedDateMillis) }) {
+                Text("OK", color = Color(0xFF272052))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color(0xFF272052))
+            }
+        },
+        colors = DatePickerDefaults.colors(
+            containerColor = Color.White
+        )
+    ) {
+        DatePicker(
+            state = datePickerState,
+            colors = DatePickerDefaults.colors(
+                selectedDayContainerColor = Color(0xFF272052),
+                todayContentColor = Color(0xFF272052),
+                todayDateBorderColor = Color(0xFF272052)
+            )
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerDialog(
+    onTimeSelected: (Int, Int) -> Unit,
+    onDismiss: () -> Unit,
+    timePickerState: TimePickerState
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { 
+                onTimeSelected(timePickerState.hour, timePickerState.minute) 
+            }) {
+                Text("OK", color = Color(0xFF272052))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color(0xFF272052))
+            }
+        },
+        text = {
+            TimePicker(
+                state = timePickerState,
+                colors = TimePickerDefaults.colors(
+                    clockDialColor = Color(0xFFF5F5F5),
+                    selectorColor = Color(0xFF272052),
+                    containerColor = Color.White,
+                    periodSelectorBorderColor = Color(0xFF272052),
+                    periodSelectorSelectedContainerColor = Color(0xFF272052),
+                    timeSelectorSelectedContainerColor = Color(0xFF272052)
+                )
+            )
+        },
+        containerColor = Color.White
+    )
+}
