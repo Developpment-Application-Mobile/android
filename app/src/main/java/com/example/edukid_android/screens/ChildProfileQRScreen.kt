@@ -51,7 +51,8 @@ fun ChildProfileQRScreen(
     onViewResultsClick: () -> Unit = {},
     onQuizGenerated: (Quiz) -> Unit = {},
     onGiftManagementClick: () -> Unit = {},
-    onViewReviewClick: () -> Unit = {}
+    onViewReviewClick: () -> Unit = {},
+    onScheduleActivitiesClick: () -> Unit = {}
 ) {
     var showQRDialog by remember { mutableStateOf(false) }
     var childState by remember { mutableStateOf(child) }
@@ -359,6 +360,19 @@ fun ChildProfileQRScreen(
                             label = "Review",
                             onClick = onViewReviewClick,
                             modifier = Modifier.weight(1f)
+                        )
+                    }
+                    
+                    // Third row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ProfileActionButton(
+                            iconResId = R.drawable.icon_generator, // Placeholder
+                            label = "Schedule",
+                            onClick = onScheduleActivitiesClick,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
