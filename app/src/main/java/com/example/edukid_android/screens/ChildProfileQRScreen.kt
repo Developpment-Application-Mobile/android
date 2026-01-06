@@ -58,7 +58,8 @@ fun ChildProfileQRScreen(
     onViewResultsClick: () -> Unit = {},
     onQuizGenerated: (Quiz) -> Unit = {},
     onGiftManagementClick: () -> Unit = {},
-    onViewReviewClick: () -> Unit = {}
+    onViewReviewClick: () -> Unit = {},
+    onScheduleActivitiesClick: () -> Unit = {}
 ) {
     var showQRDialog by remember { mutableStateOf(false) }
     var showPuzzleCreation by remember { mutableStateOf(false) }
@@ -373,12 +374,17 @@ fun ChildProfileQRScreen(
                         )
                     }
                     
+                    // Third row
                     // Third row - Puzzle Creation and Activities
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         ProfileActionButton(
+                            iconResId = R.drawable.icon_generator, // Placeholder
+                            label = "Schedule",
+                            onClick = onScheduleActivitiesClick,
+                            modifier = Modifier.fillMaxWidth()
                             iconResId = R.drawable.icon_level,
                             label = "Create Puzzle",
                             onClick = { showPuzzleCreation = true },

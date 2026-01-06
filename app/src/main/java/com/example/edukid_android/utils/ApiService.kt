@@ -174,6 +174,27 @@ interface ApiService {
         @Body body: Map<String, String> = emptyMap()
     ): Response<com.example.edukid_android.models.ChildReviewResponse>
 
+    // ================= SCHEDULING =================
+    @POST("schedules")
+    suspend fun createSchedule(@Body request: com.example.edukid_android.models.CreateScheduleRequest): Response<com.example.edukid_android.models.ScheduleResponse>
+
+    @GET("schedules/parent/{parentId}/kid/{kidId}")
+    suspend fun getSchedulesForKid(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String
+    ): Response<List<com.example.edukid_android.models.ScheduleResponse>>
+
+    @GET("schedules/kid/{kidId}/stats")
+    suspend fun getScheduleStats(@Path("kidId") kidId: String): Response<Map<String, Any>> // Simplification for stats
+
+    @PUT("schedules/{id}/complete")
+    suspend fun markScheduleCompleted(
+        @Path("id") id: String,
+        @Body body: Map<String, Int> // { score: 100, timeSpent: 300 }
+    ): Response<com.example.edukid_android.models.ScheduleResponse>
+
+    @DELETE("schedules/{id}")
+    suspend fun deleteSchedule(@Path("id") id: String): Response<Void>
     // ================= PUZZLES =================
 
     @POST("parents/{parentId}/kids/{kidId}/puzzles")

@@ -30,6 +30,7 @@ import com.example.edukid_android.screens.ParentDashboardScreen
 import com.example.edukid_android.screens.ParentEditProfileScreen
 import com.example.edukid_android.screens.ParentSignInScreen
 import com.example.edukid_android.screens.ParentSignUpScreen
+import com.example.edukid_android.screens.ParentActivitySchedulerScreen
 import com.example.edukid_android.screens.SplashScreen
 import com.example.edukid_android.screens.WelcomeScreen
 import com.example.edukid_android.ui.theme.EduKid_androidTheme
@@ -410,6 +411,9 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onViewReviewClick = {
                                     navController.navigate("childReview/$childId")
+                                },
+                                onScheduleActivitiesClick = {
+                                    navController.navigate("scheduleActivities/$childId")
                                 }
                             )
                         } else {
@@ -480,6 +484,29 @@ class MainActivity : ComponentActivity() {
                                 child = child,
                                 parentId = currentParent?.id,
                                 onBackClick = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        } else {
+                            // If child not found, navigate back
+                            LaunchedEffect(Unit) {
+                                navController.popBackStack()
+                            }
+                        }
+                    }
+                    composable(
+                        route = "scheduleActivities/{childId}",
+                        arguments = listOf(
+                            navArgument("childId") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val childId = backStackEntry.arguments?.getString("childId")
+                        val child = currentParent?.children?.find { it.id == childId }
+                        
+                        if (child != null) {
+                            ParentActivitySchedulerScreen(
+                                child = child,
+                                onBack = {
                                     navController.popBackStack()
                                 }
                             )

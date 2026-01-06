@@ -16,9 +16,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,15 +29,31 @@ import com.example.edukid_android.components.GameHeader
 import com.example.edukid_android.components.GameCompletionDialog
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.ui.unit.IntOffset
 import kotlin.random.Random
 
+data class PuzzleTheme(
+    val id: Int,
+    val title: String,
+    val color1: Color,
+    val color2: Color
+)
+
+val puzzleThemes = listOf(
+    PuzzleTheme(1, "Lion King", Color(0xFFFFD700), Color(0xFFFF8C00)),
+    PuzzleTheme(2, "Magic Forest", Color(0xFF4CAF50), Color(0xFF1B5E20)),
+    PuzzleTheme(3, "Space Explorer", Color(0xFF3F51B5), Color(0xFF1A237E))
+)
+
 @Composable
 fun PuzzleGame(navController: NavController) {
     val context = LocalContext.current
-    var selectedImageRes by remember { mutableStateOf(R.drawable.puzzle_1) }
+    var selectedTheme by remember { mutableStateOf(puzzleThemes[0]) }
     var gameStarted by remember { mutableStateOf(false) }
     
     // Game State
@@ -45,9 +62,9 @@ fun PuzzleGame(navController: NavController) {
     var moves by remember { mutableStateOf(0) }
     var gameComplete by remember { mutableStateOf(false) }
 
-    // Helper to slice bitmap
-    val bitmap = remember(selectedImageRes) {
-        BitmapFactory.decodeResource(context.resources, selectedImageRes)
+    // Helper to generate bitmap programmatically
+    val bitmap = remember(selectedTheme) {
+        createPuzzleBitmap(selectedTheme)
     }
 
     // Logic to move tiles
@@ -83,8 +100,8 @@ fun PuzzleGame(navController: NavController) {
 
     if (!gameStarted) {
         PuzzleSelectionScreen(
-            onImageSelected = { res ->
-                selectedImageRes = res
+            onThemeSelected = { theme ->
+                selectedTheme = theme
                 tiles = (0..8).toList().shuffled()
                 // Ensure solvable (simplification: simple shuffle might not be solvable, 
                 // but for kid app, let's valid shuffle or just simple random for now. 
@@ -170,6 +187,7 @@ fun PuzzleGame(navController: NavController) {
                                             
                                             // Create bitmap subset
                                             // Note: In real app, cache these bitmaps
+                                            // Ideally, don't create bitmap in composition, but for small game it's ok
                                             val tileBitmap = Bitmap.createBitmap(bitmap, srcX, srcY, tileWidth, tileHeight)
                                             
                                             Image(
@@ -178,6 +196,16 @@ fun PuzzleGame(navController: NavController) {
                                                 contentScale = ContentScale.Crop,
                                                 modifier = Modifier.fillMaxSize()
                                             )
+                                            
+                                            // Overlay number for easier play
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = "${tileValue + 1}",
+                                                    color = Color.White.copy(alpha = 0.5f),
+                                                    fontSize = 24.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                        } else {
                                            Box(modifier = Modifier
                                                .fillMaxSize()
@@ -215,7 +243,7 @@ fun PuzzleGame(navController: NavController) {
 
 @Composable
 fun PuzzleSelectionScreen(
-    onImageSelected: (Int) -> Unit,
+    onThemeSelected: (PuzzleTheme) -> Unit,
     navController: NavController
 ) {
     Column(
@@ -229,7 +257,7 @@ fun PuzzleSelectionScreen(
         ) {
             IconButton(onClick = { navController.popBackStack() }) {
                Icon(
-                   imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack, 
+                   imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, 
                    contentDescription = "Back",
                    tint = Color.White
                )
@@ -239,36 +267,45 @@ fun PuzzleSelectionScreen(
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        val options = listOf(
-            R.drawable.puzzle_1 to "Lion King",
-            R.drawable.puzzle_2 to "Magic Forest",
-            R.drawable.puzzle_3 to "Space Explorer"
-        )
-        
-        options.forEach { (res, title) ->
+        puzzleThemes.forEach { theme ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
                     .padding(bottom = 16.dp)
-                    .clickable { onImageSelected(res) },
+                    .clickable { onThemeSelected(theme) },
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(8.dp)
             ) {
                 Box {
-                    Image(
-                        painter = androidx.compose.ui.res.painterResource(id = res),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    // Preview using gradient
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha=0.7f))))
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(theme.color1, theme.color2),
+                                    start = Offset.Zero,
+                                    end = Offset.Infinite
+                                )
+                            )
+                    )
+                    
+                    // Decorative patterns
+                    Box(modifier = Modifier.fillMaxSize().padding(20.dp), contentAlignment = Alignment.Center) {
+                         Text(
+                             text = "🧩",
+                             fontSize = 60.sp
+                         )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha=0.3f))))
                     )
                     Text(
-                        text = title,
+                        text = theme.title,
                         color = Color.White,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
@@ -280,4 +317,33 @@ fun PuzzleSelectionScreen(
             }
         }
     }
+}
+
+private fun createPuzzleBitmap(theme: PuzzleTheme): Bitmap {
+    val width = 600
+    val height = 600
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    
+    // Draw background gradient
+    val paint = Paint()
+    paint.shader = android.graphics.LinearGradient(
+        0f, 0f, width.toFloat(), height.toFloat(),
+        theme.color1.toArgb(), theme.color2.toArgb(),
+        android.graphics.Shader.TileMode.CLAMP
+    )
+    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+    
+    // Draw some shapes
+    paint.shader = null
+    paint.color = android.graphics.Color.WHITE
+    paint.alpha = 50
+    canvas.drawCircle(150f, 150f, 100f, paint)
+    canvas.drawCircle(450f, 450f, 80f, paint)
+    
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 10f
+    canvas.drawRect(50f, 50f, 550f, 550f, paint)
+    
+    return bitmap
 }
