@@ -54,8 +54,7 @@ fun ImprovedChildHomeScreen(
     navController: NavController? = null,
     child: Child? = null,
     onQuizClick: (Quiz) -> Unit = {},
-    onChildUpdate: (Child) -> Unit = {},
-    onLogout: () -> Unit = {}
+    onChildUpdate: (Child) -> Unit = {}
 ) {
     var selectedFilter by remember { mutableStateOf<QuizType?>(null) }
 
@@ -209,40 +208,6 @@ fun ImprovedChildHomeScreen(
                                         Text(
                                             text = "🚀",
                                             fontSize = 32.sp
-                                        )
-                                    }
-                                }
-                            }
-                            
-                            // Logout Button
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 20.dp),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                Card(
-                                    modifier = Modifier.clickable { onLogout() },
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color.White.copy(alpha = 0.2f)
-                                    ),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                            text = "🚪",
-                                            fontSize = 18.sp
-                                        )
-                                        Text(
-                                            text = "Logout",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
                                         )
                                     }
                                 }

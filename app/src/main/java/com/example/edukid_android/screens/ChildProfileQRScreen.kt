@@ -112,7 +112,7 @@ fun ChildProfileQRScreen(
                 .padding(20.dp)
         ) {
             // Decorative elements
-            DecorativeElementsProfile()
+            DecorativeElementsProfilem()
 
             Column(
                 modifier = Modifier
@@ -1323,7 +1323,7 @@ fun QRCodeDialog(
 }
 
 @Composable
-fun DecorativeElementsProfile() {
+fun DecorativeElementsProfilem() {
     Image(
         painter = painterResource(id = R.drawable.education_book),
         contentDescription = "Education Book",
@@ -1445,7 +1445,7 @@ fun ActivitiesDialog(
             )
     ) {
         // Decorative elements
-        DecorativeElementsProfile()
+        DecorativeElementsProfilem()
 
         Column(
             modifier = Modifier
