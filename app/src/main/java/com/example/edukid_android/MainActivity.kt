@@ -31,6 +31,7 @@ import com.example.edukid_android.screens.ParentEditProfileScreen
 import com.example.edukid_android.screens.ParentSignInScreen
 import com.example.edukid_android.screens.ParentSignUpScreen
 import com.example.edukid_android.screens.ParentActivitySchedulerScreen
+import com.example.edukid_android.screens.SplashScreen
 import com.example.edukid_android.screens.WelcomeScreen
 import com.example.edukid_android.ui.theme.EduKid_androidTheme
 import com.example.edukid_android.utils.PreferencesManager
@@ -97,20 +98,34 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val isOnline = remember { NetworkUtils.isInternetAvailable(context) }
                 
-                val startDest = if (!isOnline) {
-                    "offlineGames"
-                } else if (initialChild != null) {
-                    "childHome" // Child session exists, go directly to child home
-                } else if (initialToken != null && initialParent != null) {
-                    "parentDashboard" 
-                } else {
-                    "welcome"
-                }
+                // Always start with splash screen
+                val startDest = "splash"
 
                 NavHost(
                     navController = navController, 
                     startDestination = startDest
-                ) {                    composable("welcome") { WelcomeScreen(navController) }
+                ) {
+                    composable("splash") {
+                        SplashScreen(
+                            onSplashFinished = {
+                                // Determine where to navigate after splash
+                                val destination = if (!isOnline) {
+                                    "offlineGames"
+                                } else if (initialChild != null) {
+                                    "childHome" // Child session exists, go directly to child home
+                                } else if (initialToken != null && initialParent != null) {
+                                    "parentDashboard" 
+                                } else {
+                                    "welcome"
+                                }
+                                
+                                navController.navigate(destination) {
+                                    popUpTo("splash") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable("welcome") { WelcomeScreen(navController) }
                     composable("offlineGames") { 
                          OfflineGamesScreen(navController)
                     }
@@ -195,13 +210,6 @@ class MainActivity : ComponentActivity() {
                                         // Note: quizzes, name, age, level, avatarEmoji are NOT updated here
                                     ) ?: currentChild // If copy fails, keep current
                                     currentChild?.let { sessionManager.updateChildSession(it) }
-                                },
-                                onLogout = {
-                                    sessionManager.clearChildSession()
-                                    currentChild = null
-                                    navController.navigate("childLogin") {
-                                        popUpTo("childHome") { inclusive = true }
-                                    }
                                 }
                             )
                         } else {
@@ -223,6 +231,28 @@ class MainActivity : ComponentActivity() {
                             LaunchedEffect(Unit) {
                                 navController.navigate("childLogin") {
                                     popUpTo("childGames") { inclusive = true }
+                                }
+                            }
+                        }
+                    }
+                    composable("childProfile") {
+                        currentChild?.let { child ->
+                            com.example.edukid_android.screens.ChildProfileScreen(
+                                navController = navController,
+                                child = child,
+                                onLogout = {
+                                    sessionManager.clearChildSession()
+                                    currentChild = null
+                                    navController.navigate("welcome") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            )
+                        } ?: run {
+                            // If no child data, navigate back to login
+                            LaunchedEffect(Unit) {
+                                navController.navigate("childLogin") {
+                                    popUpTo("childProfile") { inclusive = true }
                                 }
                             }
                         }
@@ -533,6 +563,15 @@ class MainActivity : ComponentActivity() {
                             },
                             onEditProfileClick = {
                                 navController.navigate("parentEditProfile")
+                            },
+                            onChildUpdated = { updatedParent ->
+                                // Use LaunchedEffect to safely update state after composition
+                                currentParent = updatedParent
+                                try {
+                                    PreferencesManager.saveParentData(this@MainActivity, updatedParent)
+                                } catch (e: Exception) {
+                                    android.util.Log.e("MainActivity", "Error saving parent data", e)
+                                }
                             }
                         )
                     }

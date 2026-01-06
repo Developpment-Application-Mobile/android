@@ -94,3 +94,13 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
+    implementation("androidx.compose.ui:ui:1.5.4")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+
+    // Image Loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+}

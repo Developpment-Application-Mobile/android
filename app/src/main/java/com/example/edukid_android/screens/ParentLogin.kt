@@ -47,7 +47,6 @@ fun ParentSignInScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var rememberMe by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -189,36 +188,11 @@ fun ParentSignInScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Remember Me checkbox and Forgot password row
+                // Forgot password - Right aligned
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    // Remember Me checkbox
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { rememberMe = !rememberMe }
-                    ) {
-                        Checkbox(
-                            checked = rememberMe,
-                            onCheckedChange = { rememberMe = it },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = Color.White,
-                                uncheckedColor = Color.White.copy(alpha = 0.7f),
-                                checkmarkColor = Color(0xFF272052)
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Remember Me",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White
-                        )
-                    }
-
-                    // Forgot password
                     Text(
                         text = "Forgot Password?",
                         fontSize = 14.sp,
@@ -272,15 +246,10 @@ fun ParentSignInScreen(
                             result.onSuccess { loginResponse ->
                                 val parent = loginResponse.parent.toParent()
                                 
-                                // Save credentials if Remember Me is checked
-                                if (rememberMe) {
-                                    PreferencesManager.saveAccessToken(context, loginResponse.accessToken)
-                                    PreferencesManager.saveParentData(context, parent)
-                                    PreferencesManager.setRememberMe(context, true)
-                                } else {
-                                    // Clear any previously stored credentials if Remember Me is unchecked
-                                    PreferencesManager.clearAll(context)
-                                }
+                                // Always save credentials (auto session)
+                                PreferencesManager.saveAccessToken(context, loginResponse.accessToken)
+                                PreferencesManager.saveParentData(context, parent)
+                                PreferencesManager.setRememberMe(context, true)
                                 
                                 onLoginSuccess(loginResponse.accessToken, parent)
                             }.onFailure { exception ->

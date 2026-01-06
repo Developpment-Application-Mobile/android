@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,7 +42,11 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.edukid_android.R
 import com.example.edukid_android.models.Child
 import com.example.edukid_android.models.Quiz
+import com.example.edukid_android.models.PuzzleResponse
+import com.example.edukid_android.models.getBackgroundColor
+import com.example.edukid_android.models.getIconRes
 import com.example.edukid_android.utils.ApiClient
+import com.example.edukid_android.utils.SessionManager
 import com.example.edukid_android.utils.getAvatarResource
 import kotlinx.coroutines.launch
 
@@ -55,6 +62,8 @@ fun ChildProfileQRScreen(
     onScheduleActivitiesClick: () -> Unit = {}
 ) {
     var showQRDialog by remember { mutableStateOf(false) }
+    var showPuzzleCreation by remember { mutableStateOf(false) }
+    var showActivitiesDialog by remember { mutableStateOf(false) }
     var childState by remember { mutableStateOf(child) }
     var selectedSubject by remember { mutableStateOf("") }
     var selectedDifficulty by remember { mutableStateOf("") }
@@ -69,6 +78,8 @@ fun ChildProfileQRScreen(
     var isLoadingQR by remember { mutableStateOf(false) }
     var qrError by remember { mutableStateOf<String?>(null) }
     
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
     val scope = rememberCoroutineScope()
 
     val subjects = listOf(
@@ -102,7 +113,7 @@ fun ChildProfileQRScreen(
                 .padding(20.dp)
         ) {
             // Decorative elements
-            DecorativeElementsProfile()
+            DecorativeElementsProfilem()
 
             Column(
                 modifier = Modifier
@@ -364,6 +375,7 @@ fun ChildProfileQRScreen(
                     }
                     
                     // Third row
+                    // Third row - Puzzle Creation and Activities
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -373,6 +385,17 @@ fun ChildProfileQRScreen(
                             label = "Schedule",
                             onClick = onScheduleActivitiesClick,
                             modifier = Modifier.fillMaxWidth()
+                            iconResId = R.drawable.icon_level,
+                            label = "Create Puzzle",
+                            onClick = { showPuzzleCreation = true },
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        ProfileActionButton(
+                            iconResId = R.drawable.icon_results,
+                            label = "Show Activities",
+                            onClick = { showActivitiesDialog = true },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -381,7 +404,7 @@ fun ChildProfileQRScreen(
 
                 // AI Quiz Generator Section
                 Text(
-                    text = "🎯 AI Quiz Generator",
+                    text = "AI Quiz Generator",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
@@ -903,6 +926,47 @@ fun ChildProfileQRScreen(
         )
     }
 
+    if (showPuzzleCreation) {
+        ParentPuzzleCreationScreen(
+            child = childState,
+            onDismiss = { showPuzzleCreation = false },
+            onCreated = { updatedChild ->
+                showPuzzleCreation = false
+                // Update the child state with the new puzzle data
+                if (updatedChild != null) {
+                    childState = updatedChild
+                    // Save to session manager
+                    sessionManager.updateChildSession(updatedChild)
+                }
+                // Optional: Show success snackbar
+                generateSuccess = "Puzzle created successfully!"
+            }
+        )
+    }
+
+    if (showActivitiesDialog) {
+        ActivitiesDialog(
+            child = childState,
+            parentId = parentId,
+            onDismiss = { showActivitiesDialog = false },
+            onActivityDeleted = { activityType, activityId ->
+                // Update child state by removing the deleted activity
+                childState = when (activityType) {
+                    "quiz" -> childState.copy(
+                        quizzes = childState.quizzes.filter { it.id != activityId }
+                    )
+                    "puzzle" -> childState.copy(
+                        puzzles = childState.puzzles.filter { it.id != activityId }
+                    )
+                    else -> childState
+                }
+                // Save to session manager
+                sessionManager.updateChildSession(childState)
+                generateSuccess = "Activity deleted successfully!"
+            }
+        )
+    }
+
     if (isGenerating) {
         AlertDialog(
             onDismissRequest = {},
@@ -1265,7 +1329,7 @@ fun QRCodeDialog(
 }
 
 @Composable
-fun DecorativeElementsProfile() {
+fun DecorativeElementsProfilem() {
     Image(
         painter = painterResource(id = R.drawable.education_book),
         contentDescription = "Education Book",
@@ -1356,6 +1420,520 @@ fun ProfileActionButton(
                     color = Color(0xFF2E2E2E)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun ActivitiesDialog(
+    child: Child,
+    parentId: String?,
+    onDismiss: () -> Unit,
+    onActivityDeleted: (String, String) -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var isDeleting by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFAF7EE7).copy(alpha = 0.6f),
+                        Color(0xFF272052)
+                    ),
+                    center = Offset(200f, 200f),
+                    radius = 400f
+                )
+            )
+    ) {
+        // Decorative elements
+        DecorativeElementsProfilem()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp)
+        ) {
+            // Header with back button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = Color.White.copy(alpha = 0.2f),
+                            shape = CircleShape
+                        )
+                ) {
+                    Text(
+                        text = "←",
+                        fontSize = 24.sp,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Text(
+                    text = "${child.name}'s Activities",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    letterSpacing = 0.4.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Tab Row
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White.copy(alpha = 0.95f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp)
+                ) {
+                    TabButton(
+                        text = "Quizzes (${child.quizzes.size})",
+                        isSelected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        modifier = Modifier.weight(1f)
+                    )
+                    TabButton(
+                        text = "Puzzles (${child.puzzles.size})",
+                        isSelected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Content based on selected tab
+            when (selectedTab) {
+                0 -> {
+                    // Quizzes Tab
+                    if (child.quizzes.isNotEmpty()) {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(child.quizzes) { quiz ->
+                                QuizActivityCard(
+                                    quiz = quiz,
+                                    onDelete = {
+                                        if (parentId != null && child.id != null) {
+                                            isDeleting = true
+                                            deleteError = null
+                                            scope.launch {
+                                                val result = ApiClient.deleteQuiz(parentId, child.id!!, quiz.id ?: "")
+                                                result.onSuccess {
+                                                    onActivityDeleted("quiz", quiz.id ?: "")
+                                                    isDeleting = false
+                                                }.onFailure { exception ->
+                                                    deleteError = exception.message ?: "Failed to delete quiz"
+                                                    isDeleting = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    isDeleting = isDeleting
+                                )
+                            }
+                        }
+                    } else {
+                        EmptyStateCard(
+                            icon = "📚",
+                            title = "No Quizzes Yet",
+                            subtitle = "Create quizzes to see them here"
+                        )
+                    }
+                }
+                1 -> {
+                    // Puzzles Tab
+                    if (child.puzzles.isNotEmpty()) {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(child.puzzles) { puzzle ->
+                                PuzzleActivityCard(
+                                    puzzle = puzzle,
+                                    onDelete = {
+                                        if (parentId != null && child.id != null) {
+                                            isDeleting = true
+                                            deleteError = null
+                                            scope.launch {
+                                                val result = ApiClient.deletePuzzle(parentId, child.id!!, puzzle.id)
+                                                result.onSuccess {
+                                                    onActivityDeleted("puzzle", puzzle.id)
+                                                    isDeleting = false
+                                                }.onFailure { exception ->
+                                                    deleteError = exception.message ?: "Failed to delete puzzle"
+                                                    isDeleting = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    isDeleting = isDeleting
+                                )
+                            }
+                        }
+                    } else {
+                        EmptyStateCard(
+                            icon = "🧩",
+                            title = "No Puzzles Yet",
+                            subtitle = "Create puzzles to see them here"
+                        )
+                    }
+                }
+            }
+        }
+
+        // Error Snackbar
+        deleteError?.let { error ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                LaunchedEffect(error) {
+                    kotlinx.coroutines.delay(4000)
+                    deleteError = null
+                }
+                Snackbar(
+                    action = {
+                        TextButton(onClick = { deleteError = null }) {
+                            Text("Dismiss", color = Color.White)
+                        }
+                    },
+                    containerColor = Color(0xFFD32F2F),
+                    contentColor = Color.White
+                ) {
+                    Text(text = error, color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TabButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(48.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) Color(0xFFAF7EE7) else Color.Transparent,
+            contentColor = if (isSelected) Color.White else Color(0xFF666666)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = if (isSelected) 2.dp else 0.dp
+        )
+    ) {
+        Text(
+            text = text,
+            fontSize = 14.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun QuizActivityCard(
+    quiz: Quiz,
+    onDelete: () -> Unit,
+    isDeleting: Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.95f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Quiz Icon
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .background(
+                        color = quiz.type.getBackgroundColor(),
+                        shape = RoundedCornerShape(16.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = quiz.type.getIconRes()),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Quiz Info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = quiz.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E2E2E)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${quiz.questions.size} questions • ${quiz.type.name}",
+                    fontSize = 13.sp,
+                    color = Color(0xFF666666)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Status
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = if (quiz.isAnswered) Color(0xFF4CAF50).copy(alpha = 0.15f) else Color(0xFFFF9800).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (quiz.isAnswered) "✅ Completed" else "⏳ Pending",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (quiz.isAnswered) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                        )
+                    }
+                    
+                    if (quiz.score != null && quiz.score!! > 0) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Score: ${quiz.score}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFAF7EE7)
+                        )
+                    }
+                }
+            }
+            
+            // Delete Button
+            IconButton(
+                onClick = onDelete,
+                enabled = !isDeleting,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = Color(0xFFD32F2F).copy(alpha = 0.1f),
+                        shape = CircleShape
+                    )
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color(0xFFD32F2F),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFD32F2F),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PuzzleActivityCard(
+    puzzle: PuzzleResponse,
+    onDelete: () -> Unit,
+    isDeleting: Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.95f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Puzzle Icon
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .background(
+                        color = puzzle.puzzleType.color.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(16.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "🧩",
+                    fontSize = 28.sp
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // Puzzle Info
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = puzzle.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E2E2E)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${puzzle.puzzleDifficulty.displayName} • ${puzzle.pieces.size} pieces",
+                    fontSize = 13.sp,
+                    color = Color(0xFF666666)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Status
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = if (puzzle.isCompleted) Color(0xFF4CAF50).copy(alpha = 0.15f) else Color(0xFFFF9800).copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (puzzle.isCompleted) "✅ Completed" else "⏳ Pending",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (puzzle.isCompleted) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                        )
+                    }
+                    
+                    if (puzzle.score > 0) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Score: ${puzzle.score}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFAF7EE7)
+                        )
+                    }
+                }
+            }
+            
+            // Delete Button
+            IconButton(
+                onClick = onDelete,
+                enabled = !isDeleting,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = Color(0xFFD32F2F).copy(alpha = 0.1f),
+                        shape = CircleShape
+                    )
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color(0xFFD32F2F),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFD32F2F),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyStateCard(
+    icon: String,
+    title: String,
+    subtitle: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.95f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = icon,
+                fontSize = 64.sp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF2E2E2E),
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = subtitle,
+                fontSize = 14.sp,
+                color = Color(0xFF666666),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

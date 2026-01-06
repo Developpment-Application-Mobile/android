@@ -8,13 +8,15 @@ data class Child(
     val level: String,
     val avatarEmoji: String,
     val quizzes: List<Quiz> = emptyList(),
+    val puzzles: List<PuzzleResponse> = emptyList(), // Backend puzzles
     val Score: Int = 0,
     val lifetimeScore: Int = 0,
     val progressionLevel: Int = 1,
     val inventory: List<InventoryItem> = emptyList(),
     val shopCatalog: List<ShopItem> = emptyList(),
     val quests: List<Quest> = emptyList(),
-    val parentId: String? = null
+    val parentId: String? = null,
+    val localPuzzles: List<LocalPuzzle> = emptyList() // Offline-only puzzles (not used)
 ) {
     // ✅ Get only completed quizzes
     fun getCompletedQuizzes(): List<Quiz> {

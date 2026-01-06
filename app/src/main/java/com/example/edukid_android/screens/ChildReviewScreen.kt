@@ -380,7 +380,7 @@ fun ReviewContent(
             ) {
                 InfoChipReview(icon = "🎂", text = "${review.childAge} years")
                 InfoChipReview(icon = "📊", text = "Level ${review.childLevel}")
-                InfoChipReview(icon = "⭐", text = "Prog. ${review.progressionLevel}")
+                InfoChipReview(icon = "🚀", text = "${review.progressionLevel}")
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(

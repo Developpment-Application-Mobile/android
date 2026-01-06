@@ -1,6 +1,7 @@
 package com.example.edukid_android.utils
 
 import com.example.edukid_android.models.AddChildRequest
+import com.example.edukid_android.models.UpdateChildRequest
 import com.example.edukid_android.models.ChildResponse
 import com.example.edukid_android.models.CreateGiftRequest
 import com.example.edukid_android.models.LoginRequest
@@ -41,6 +42,13 @@ interface ApiService {
     suspend fun addChild(
         @Path("parentId") parentId: String,
         @Body request: AddChildRequest
+    ): Response<ParentResponse>
+    
+    @PATCH("parents/{parentId}/kids/{kidId}")
+    suspend fun updateChild(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Body request: UpdateChildRequest
     ): Response<ParentResponse>
     
     @GET("parents/{parentId}/kids/{kidId}/qr")
@@ -187,5 +195,35 @@ interface ApiService {
 
     @DELETE("schedules/{id}")
     suspend fun deleteSchedule(@Path("id") id: String): Response<Void>
+    // ================= PUZZLES =================
+
+    @POST("parents/{parentId}/kids/{kidId}/puzzles")
+    suspend fun generatePuzzle(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Body request: com.example.edukid_android.models.GeneratePuzzleRequest
+    ): Response<ResponseBody>
+
+    @POST("parents/{parentId}/kids/{kidId}/puzzles/{puzzleId}/submit")
+    suspend fun submitPuzzle(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Path("puzzleId") puzzleId: String,
+        @Body request: com.example.edukid_android.models.SubmitPuzzleRequest
+    ): Response<ChildResponse>
+
+    @DELETE("parents/{parentId}/kids/{kidId}/quizzes/{quizId}")
+    suspend fun deleteQuiz(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Path("quizId") quizId: String
+    ): Response<ResponseBody>
+
+    @DELETE("parents/{parentId}/kids/{kidId}/puzzles/{puzzleId}")
+    suspend fun deletePuzzle(
+        @Path("parentId") parentId: String,
+        @Path("kidId") kidId: String,
+        @Path("puzzleId") puzzleId: String
+    ): Response<ResponseBody>
 }
 

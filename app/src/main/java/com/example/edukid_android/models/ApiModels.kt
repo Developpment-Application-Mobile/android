@@ -40,6 +40,13 @@ data class AddChildRequest(
     val avatarEmoji : String?
 )
 
+// Request model for updating a child
+data class UpdateChildRequest(
+    val name: String,
+    val age: Int,
+    val avatarEmoji: String?
+)
+
 // Request model for generating a quiz for a child
 data class GenerateQuizRequest(
     val subject: String,
@@ -77,6 +84,8 @@ data class ChildResponse(
     @SerializedName("avatarEmoji")
     val avatarEmoji: String? = null,
     val quizzes: List<QuizResponse>? = emptyList(),
+    @SerializedName("puzzles")
+    val puzzles: List<PuzzleResponse>? = emptyList(),
     @SerializedName("Score")
     val score: Int? = 0,
     @SerializedName("_id")
@@ -95,21 +104,97 @@ data class ChildResponse(
     val shopCatalog: List<ShopItemResponse>? = emptyList()
 ) {
     fun toChild(): Child {
-        return Child(
-            name = this.name ?: "",
-            age = this.age ?: 0,
-            level = this.level ?: "",
-            avatarEmoji = this.avatarEmoji ?: "avatar_3",
-            quizzes = this.quizzes?.map { it.toQuiz() } ?: emptyList(),
-            Score = this.score ?: 0,
-            id = this.id,
-            parentId = this.parentId,
-            lifetimeScore = this.lifetimeScore ?: 0,
-            progressionLevel = this.progressionLevel ?: 1,
-            inventory = this.inventory?.map { it.toInventoryItem() } ?: emptyList(),
-            quests = this.quests?.map { it.toQuest() } ?: emptyList(),
-            shopCatalog = this.shopCatalog?.map { it.toShopItem() } ?: emptyList()
-        )
+        return try {
+            Child(
+                name = this.name ?: "",
+                age = this.age ?: 0,
+                level = this.level ?: "",
+                avatarEmoji = this.avatarEmoji ?: "avatar_3",
+                quizzes = try {
+                    when {
+                        this.quizzes == null -> emptyList()
+                        this.quizzes.isEmpty() -> emptyList()
+                        else -> this.quizzes.mapNotNull { quiz ->
+                            try {
+                                quiz?.toQuiz()
+                            } catch (e: Exception) {
+                                android.util.Log.w("ChildResponse", "Failed to convert quiz: ${e.message}")
+                                null
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("ChildResponse", "Failed to process quizzes: ${e.message}")
+                    emptyList()
+                },
+                puzzles = try {
+                    this.puzzles?.filterNotNull() ?: emptyList()
+                } catch (e: Exception) {
+                    android.util.Log.w("ChildResponse", "Failed to process puzzles: ${e.message}")
+                    emptyList()
+                },
+                Score = this.score ?: 0,
+                id = this.id,
+                parentId = this.parentId,
+                lifetimeScore = this.lifetimeScore ?: 0,
+                progressionLevel = this.progressionLevel ?: 1,
+                inventory = try {
+                    when {
+                        this.inventory == null -> emptyList()
+                        this.inventory.isEmpty() -> emptyList()
+                        else -> this.inventory.mapNotNull { item ->
+                            try {
+                                item?.toInventoryItem()
+                            } catch (e: Exception) {
+                                android.util.Log.w("ChildResponse", "Failed to convert inventory item: ${e.message}")
+                                null
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("ChildResponse", "Failed to process inventory: ${e.message}")
+                    emptyList()
+                },
+                quests = try {
+                    when {
+                        this.quests == null -> emptyList()
+                        this.quests.isEmpty() -> emptyList()
+                        else -> this.quests.mapNotNull { quest ->
+                            try {
+                                quest?.toQuest()
+                            } catch (e: Exception) {
+                                android.util.Log.w("ChildResponse", "Failed to convert quest: ${e.message}")
+                                null
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("ChildResponse", "Failed to process quests: ${e.message}")
+                    emptyList()
+                },
+                shopCatalog = try {
+                    when {
+                        this.shopCatalog == null -> emptyList()
+                        this.shopCatalog.isEmpty() -> emptyList()
+                        else -> this.shopCatalog.mapNotNull { item ->
+                            try {
+                                item?.toShopItem()
+                            } catch (e: Exception) {
+                                android.util.Log.w("ChildResponse", "Failed to convert shop item: ${e.message}")
+                                null
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("ChildResponse", "Failed to process shop catalog: ${e.message}")
+                    emptyList()
+                },
+                localPuzzles = emptyList() // Not used anymore
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("ChildResponse", "Failed to convert child: ${e.message}", e)
+            throw e
+        }
     }
 }
 
@@ -182,7 +267,15 @@ data class ParentResponse(
                 email = this.email,
                 phoneNumber = "", // Not provided in API response
                 profileImageUrl = "", // Not provided in API response
-                children = this.children.map { it.toChild() },
+                children = this.children.let { childrenList ->
+                    childrenList.mapNotNull { child ->
+                        try { 
+                            child.toChild() 
+                        } catch (e: Exception) { 
+                            null 
+                        } 
+                    }
+                },
                 totalScore = this.totalScore,
                 isActive = this.isActive,
                 id = this.id
@@ -205,7 +298,15 @@ data class QuizResponse(
         return Quiz(
             id = id,
             title = title ?: "",
-            questions = questions?.map { it.toQuestion() } ?: emptyList(),
+            questions = this.questions?.let { questionList ->
+                questionList.mapNotNull { question ->
+                    try { 
+                        question?.toQuestion() 
+                    } catch (e: Exception) { 
+                        null 
+                    } 
+                }
+            } ?: emptyList(),
             isAnswered = isAnswered ?: false,
             type = quizType,
             score = score ?: 0
