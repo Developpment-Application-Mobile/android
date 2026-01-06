@@ -60,6 +60,10 @@ fun ImprovedChildHomeScreen(
     var selectedFilter by remember { mutableStateOf<QuizType?>(null) }
 
     var childState by remember { mutableStateOf(child) }
+    
+    // Puzzle play state
+    var selectedPuzzle by remember { mutableStateOf<com.example.edukid_android.models.PuzzleResponse?>(null) }
+    var showPuzzlePlay by remember { mutableStateOf(false) }
 
     // Update local state when child prop changes
     LaunchedEffect(child) {
@@ -721,6 +725,34 @@ fun ImprovedChildHomeScreen(
                         }
                     }
 
+                    // Puzzles Section (from backend)
+                    val backendPuzzles = remember(childState) {
+                        childState?.puzzles ?: emptyList()
+                    }
+                    
+                    if (backendPuzzles.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "My Puzzles 🧩",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+
+                        backendPuzzles.forEach { puzzle ->
+                            ServerPuzzleCard(
+                                puzzle = puzzle,
+                                onClick = {
+                                    selectedPuzzle = puzzle
+                                    showPuzzlePlay = true
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+
                     // Empty state
                     if (filteredQuizzes.isEmpty()) {
                         Card(
@@ -820,6 +852,42 @@ fun ImprovedChildHomeScreen(
                 Text(text = msg, color = Color.White)
             }
         }
+    }
+    
+    // Puzzle Play Screen Overlay
+    if (showPuzzlePlay && selectedPuzzle != null) {
+        ImagePuzzlePlayScreen(
+            puzzle = selectedPuzzle!!,
+            onBack = {
+                showPuzzlePlay = false
+                selectedPuzzle = null
+            },
+            onComplete = { score, timeSpent ->
+                // Submit puzzle completion to backend
+                scope.launch {
+                    try {
+                        childState?.let { child ->
+                            val result = ApiClient.submitPuzzle(
+                                parentId = child.parentId ?: "",
+                                kidId = child.id ?: "",
+                                puzzleId = selectedPuzzle!!.id,
+                                positions = selectedPuzzle!!.pieces.map { it.currentPosition },
+                                timeSpent = timeSpent
+                            )
+                            
+                            result.onSuccess { updatedChild ->
+                                childState = updatedChild.toChild()
+                                onChildUpdate(childState!!)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("ChildHomeScreen", "Error submitting puzzle", e)
+                    }
+                }
+                showPuzzlePlay = false
+                selectedPuzzle = null
+            }
+        )
     }
 }
 
@@ -1277,4 +1345,351 @@ fun ImprovedChildHomeScreenPreview() {
     )
 
     ImprovedChildHomeScreen(child = sampleChild)
+}
+
+
+@Composable
+fun ServerPuzzleCard(
+    puzzle: com.example.edukid_android.models.PuzzleResponse,
+    onClick: () -> Unit
+) {
+    val completionStatus = if (puzzle.isCompleted) "Completed ✓" else "Not Started"
+    val statusColor = if (puzzle.isCompleted) Color(0xFF4CAF50) else Color(0xFFFF9800)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.85f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            puzzle.puzzleType.color.copy(alpha = 0.12f),
+                            Color.White.copy(alpha = 0.9f)
+                        )
+                    )
+                )
+                .padding(18.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Puzzle Icon
+                Box(
+                    modifier = Modifier
+                        .size(70.dp)
+                        .shadow(6.dp, RoundedCornerShape(20.dp))
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    puzzle.puzzleType.color.copy(alpha = 0.25f),
+                                    puzzle.puzzleType.color.copy(alpha = 0.45f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(20.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Show puzzle type icon
+                    Text(
+                        text = when (puzzle.puzzleType) {
+                            com.example.edukid_android.models.PuzzleType.IMAGE -> "🖼️"
+                            com.example.edukid_android.models.PuzzleType.WORD -> "🔤"
+                            com.example.edukid_android.models.PuzzleType.NUMBER -> "🔢"
+                            com.example.edukid_android.models.PuzzleType.SEQUENCE -> "🔄"
+                            com.example.edukid_android.models.PuzzleType.PATTERN -> "🧩"
+                        },
+                        fontSize = 36.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(18.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = puzzle.title,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1E1E1E)
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "${puzzle.gridSize}×${puzzle.gridSize}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF6A6A6A)
+                        )
+                        
+                        Text(
+                            text = "•",
+                            fontSize = 13.sp,
+                            color = Color(0xFF6A6A6A)
+                        )
+                        
+                        Text(
+                            text = puzzle.puzzleDifficulty.displayName,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = puzzle.puzzleDifficulty.color
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Status badge
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = statusColor.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = completionStatus,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = statusColor
+                        )
+                    }
+                }
+
+                // Play button
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    puzzle.puzzleType.color,
+                                    puzzle.puzzleType.color.copy(alpha = 0.8f)
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (puzzle.isCompleted) "↻" else "▶",
+                        fontSize = 20.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Show score if completed
+            if (puzzle.isCompleted && puzzle.score > 0) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Score: ${puzzle.score} pts",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF4CAF50)
+                    )
+                    
+                    if (puzzle.timeSpent > 0) {
+                        Text(
+                            text = "Time: ${puzzle.timeSpent}s",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF6A6A6A)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PuzzleCard(
+    puzzle: com.example.edukid_android.models.LocalPuzzle,
+    onClick: () -> Unit
+) {
+    val completionStatus = if (puzzle.isCompleted) "Completed ✓" else "Not Started"
+    val statusColor = if (puzzle.isCompleted) Color(0xFF4CAF50) else Color(0xFFFF9800)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.85f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        listOf(
+                            puzzle.type.color.copy(alpha = 0.12f),
+                            Color.White.copy(alpha = 0.9f)
+                        )
+                    )
+                )
+                .padding(18.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Puzzle Icon
+                Box(
+                    modifier = Modifier
+                        .size(70.dp)
+                        .shadow(6.dp, RoundedCornerShape(20.dp))
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    puzzle.type.color.copy(alpha = 0.25f),
+                                    puzzle.type.color.copy(alpha = 0.45f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(20.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (puzzle.customImagePath != null) {
+                        // Show custom image icon
+                        Text(
+                            text = "🖼️",
+                            fontSize = 36.sp
+                        )
+                    } else {
+                        // Show puzzle emoji
+                        Text(
+                            text = puzzle.puzzleImage.emoji,
+                            fontSize = 36.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(18.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = puzzle.title,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1E1E1E)
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "${puzzle.gridSize}×${puzzle.gridSize}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF6A6A6A)
+                        )
+                        
+                        Text(
+                            text = "•",
+                            fontSize = 13.sp,
+                            color = Color(0xFF6A6A6A)
+                        )
+                        
+                        Text(
+                            text = puzzle.difficulty.displayName,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = puzzle.difficulty.color
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Status badge
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = statusColor.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = completionStatus,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = statusColor
+                        )
+                    }
+                }
+
+                // Play button
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    puzzle.type.color,
+                                    puzzle.type.color.copy(alpha = 0.8f)
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (puzzle.isCompleted) "↻" else "▶",
+                        fontSize = 20.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Show score if completed
+            if (puzzle.isCompleted && puzzle.score > 0) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Best Score: ${puzzle.score} pts",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF4CAF50)
+                    )
+                    
+                    Text(
+                        text = "Time: ${puzzle.timeSpent}s",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF6A6A6A)
+                    )
+                }
+            }
+        }
+    }
 }

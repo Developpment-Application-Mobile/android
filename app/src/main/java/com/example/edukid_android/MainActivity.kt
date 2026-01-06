@@ -198,8 +198,8 @@ class MainActivity : ComponentActivity() {
                                 onLogout = {
                                     sessionManager.clearChildSession()
                                     currentChild = null
-                                    navController.navigate("childLogin") {
-                                        popUpTo("childHome") { inclusive = true }
+                                    navController.navigate("welcome") {
+                                        popUpTo(0) { inclusive = true }
                                     }
                                 }
                             )
@@ -506,6 +506,15 @@ class MainActivity : ComponentActivity() {
                             },
                             onEditProfileClick = {
                                 navController.navigate("parentEditProfile")
+                            },
+                            onChildUpdated = { updatedParent ->
+                                // Use LaunchedEffect to safely update state after composition
+                                currentParent = updatedParent
+                                try {
+                                    PreferencesManager.saveParentData(this@MainActivity, updatedParent)
+                                } catch (e: Exception) {
+                                    android.util.Log.e("MainActivity", "Error saving parent data", e)
+                                }
                             }
                         )
                     }

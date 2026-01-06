@@ -8,8 +8,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,10 +33,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.edukid_android.R
 import com.example.edukid_android.models.Child
 import com.example.edukid_android.models.Parent
+import com.example.edukid_android.utils.ApiClient
 import com.example.edukid_android.utils.getAvatarResource
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -39,8 +48,21 @@ fun ParentDashboardScreen(
     parent: Parent?,
     onAddChildClick: () -> Unit = {},
     onChildClick: (Child) -> Unit = {},
-    onEditProfileClick: () -> Unit = {}
+    onEditProfileClick: () -> Unit = {},
+    onChildUpdated: (Parent) -> Unit = {}
 ) {
+    var showEditChildDialog by remember { mutableStateOf<Child?>(null) }
+    var pendingParentUpdate by remember { mutableStateOf<Parent?>(null) }
+    
+    // Handle pending parent update after dialog closes
+    LaunchedEffect(pendingParentUpdate) {
+        pendingParentUpdate?.let { updatedParent ->
+            kotlinx.coroutines.delay(100) // Small delay to ensure dialog is fully closed
+            onChildUpdated(updatedParent)
+            pendingParentUpdate = null
+        }
+    }
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -166,8 +188,10 @@ fun ParentDashboardScreen(
                     ) {
                         items(items = children, key = { it.id ?: it.name }) { child ->
                             ChildCard(
-                                child = child, onClick = { onChildClick(child) },
-                                context = LocalContext.current
+                                child = child,
+                                onClick = { onChildClick(child) },
+                                context = LocalContext.current,
+                                onEditClick = { showEditChildDialog = child }
                             )
                         }
                     }
@@ -175,12 +199,27 @@ fun ParentDashboardScreen(
             }
         }
     }
+    
+    // Edit Child Dialog
+    showEditChildDialog?.let { childToEdit ->
+        EditChildDialog(
+            child = childToEdit,
+            parent = parent,
+            onDismiss = { showEditChildDialog = null },
+            onSuccess = { updatedParent ->
+                showEditChildDialog = null
+                pendingParentUpdate = updatedParent
+            }
+        )
+    }
 }
 
 @Composable
 fun ChildCard(
     context : Context,
-    child: Child, onClick: () -> Unit
+    child: Child,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit = {}
 ) {
 
     // Resolve avatar resource id: try existing helper first, then fallback to resolving drawable by name
@@ -218,7 +257,8 @@ fun ChildCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
                     // Avatar
                     Box(
@@ -269,10 +309,22 @@ fun ChildCard(
                     }
                 }
 
-                // Arrow icon
-                Text(
-                    text = "▶", fontSize = 20.sp, color = Color(0xFFAF7EE7)
-                )
+                // Edit and Arrow icons
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { onEditClick() },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color(0xFFAF7EE7)
+                        )
+                    }
+                    Text(
+                        text = "▶", fontSize = 20.sp, color = Color(0xFFAF7EE7)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -434,4 +486,372 @@ fun ParentDashboardScreenPreview() {
         isActive = true
     )
     ParentDashboardScreen(parent = parent)
+}
+
+
+@Composable
+fun EditChildDialog(
+    child: Child,
+    parent: Parent?,
+    onDismiss: () -> Unit,
+    onSuccess: (Parent) -> Unit
+) {
+    var name by remember { mutableStateOf(child.name) }
+    var age by remember { mutableStateOf(child.age.toString()) }
+    var selectedAvatarIndex by remember { mutableStateOf(0) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Load avatar drawable resource IDs dynamically
+    val avatarResIds = remember {
+        (1..42).mapNotNull { index ->
+            val resName = "avatar_$index"
+            val resId = try {
+                R.drawable::class.java.getField(resName).getInt(null)
+            } catch (e: Exception) {
+                null
+            }
+            resId
+        }
+    }
+
+    // Find current avatar index
+    LaunchedEffect(child.avatarEmoji) {
+        val currentAvatarResId = getAvatarResource(context, child.avatarEmoji)
+        val index = avatarResIds.indexOf(currentAvatarResId)
+        if (index >= 0) {
+            selectedAvatarIndex = index
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFAF7EE7).copy(alpha = 0.6f),
+                            Color(0xFF272052)
+                        ),
+                        center = Offset(200f, 200f),
+                        radius = 400f
+                    )
+                )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        Text(
+                            text = "×",
+                            fontSize = 32.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column {
+                        Text(
+                            text = "Edit Child",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            letterSpacing = 0.4.sp
+                        )
+                        Text(
+                            text = "Update ${child.name}'s profile",
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Avatar selection
+                Text(
+                    text = "Choose an Avatar",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.95f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        // Show selected avatar
+                        Box(
+                            modifier = Modifier
+                                .size(100.dp)
+                                .align(Alignment.CenterHorizontally)
+                                .background(
+                                    color = Color(0xFFAF7EE7).copy(alpha = 0.2f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = avatarResIds[selectedAvatarIndex]),
+                                contentDescription = "Selected Avatar",
+                                modifier = Modifier.size(80.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Display avatars in grid
+                        val chunkedAvatars = avatarResIds.chunked(6)
+                        chunkedAvatars.forEach { row ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                row.forEach { resId ->
+                                    AvatarOptionImage(
+                                        resId = resId,
+                                        isSelected = avatarResIds[selectedAvatarIndex] == resId,
+                                        onClick = {
+                                            selectedAvatarIndex = avatarResIds.indexOf(resId)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Name input
+                Text(
+                    text = "Child's Name",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    placeholder = {
+                        Text(
+                            text = "Enter child's name",
+                            color = Color.White.copy(alpha = 0.6f)
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color.White,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                        cursorColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Age input
+                Text(
+                    text = "Age",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = age,
+                    onValueChange = {
+                        if (it.isEmpty() || (it.toIntOrNull() != null && it.toInt() in 1..18)) {
+                            age = it
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    placeholder = {
+                        Text(
+                            text = "Enter age (1–18)",
+                            color = Color.White.copy(alpha = 0.6f)
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color.White,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                        cursorColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Error message
+                errorMessage?.let { error ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFF5252).copy(alpha = 0.9f)
+                        )
+                    ) {
+                        Text(
+                            text = error,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Update button
+                Button(
+                    onClick = {
+                        val ageInt = age.toIntOrNull() ?: 0
+                        if (name.isNotBlank() && ageInt > 0) {
+                            errorMessage = null
+                            isLoading = true
+
+                            val avatarResName = try {
+                                context.resources.getResourceEntryName(avatarResIds[selectedAvatarIndex])
+                            } catch (e: Exception) {
+                                "avatar_3"
+                            }
+
+                            scope.launch {
+                                try {
+                                    val result = ApiClient.updateChild(
+                                        parentId = parent?.id ?: "",
+                                        kidId = child.id ?: "",
+                                        name = name,
+                                        age = ageInt,
+                                        avatarEmoji = avatarResName
+                                    )
+
+                                    result.onSuccess { parentResponse ->
+                                        try {
+                                            // Instead of converting the entire response, just update the specific child
+                                            if (parent != null) {
+                                                val updatedChildren = parent.children.map { existingChild ->
+                                                    if (existingChild.id == child.id) {
+                                                        // Update only the fields we changed
+                                                        existingChild.copy(
+                                                            name = name,
+                                                            age = ageInt,
+                                                            avatarEmoji = avatarResName
+                                                        )
+                                                    } else {
+                                                        existingChild
+                                                    }
+                                                }
+                                                val updatedParent = parent.copy(children = updatedChildren)
+                                                isLoading = false
+                                                onSuccess(updatedParent)
+                                            } else {
+                                                isLoading = false
+                                                errorMessage = "Parent data not available"
+                                            }
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("EditChild", "Update error", e)
+                                            isLoading = false
+                                            errorMessage = "Error updating child: ${e.message}"
+                                        }
+                                    }.onFailure { exception ->
+                                        isLoading = false
+                                        errorMessage = exception.message ?: "Failed to update child"
+                                    }
+                                } catch (e: Exception) {
+                                    isLoading = false
+                                    errorMessage = "Network error: ${e.message}"
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(100.dp),
+                    enabled = !isLoading && name.isNotBlank() && age.isNotBlank()
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color(0xFF2E2E2E),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "UPDATE CHILD",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2E2E2E),
+                            letterSpacing = 0.4.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+            }
+        }
+    }
 }

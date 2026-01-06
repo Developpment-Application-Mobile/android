@@ -1,6 +1,7 @@
 package com.example.edukid_android.utils
 
 import com.example.edukid_android.models.AddChildRequest
+import com.example.edukid_android.models.UpdateChildRequest
 import com.example.edukid_android.models.ChildResponse
 import com.example.edukid_android.models.LoginRequest
 import com.example.edukid_android.models.ParentResponse
@@ -186,6 +187,38 @@ object ApiClient {
             } else {
                 val errorMessage = response.errorBody()?.string() 
                     ?: "Add child failed: ${response.code()}"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Update an existing child's information
+     * @param parentId The ID of the parent
+     * @param kidId The ID of the child to update
+     * @param name Child's updated name
+     * @param age Child's updated age
+     * @param avatarEmoji Child's updated avatar
+     * @return Result containing ParentResponse on success or error message on failure
+     */
+    suspend fun updateChild(
+        parentId: String,
+        kidId: String,
+        name: String,
+        age: Int,
+        avatarEmoji: String?
+    ): Result<ParentResponse> {
+        return try {
+            val request = UpdateChildRequest(name = name, age = age, avatarEmoji = avatarEmoji)
+            val response = apiService.updateChild(parentId, kidId, request)
+            
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val errorMessage = response.errorBody()?.string() 
+                    ?: "Update child failed: ${response.code()}"
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
@@ -581,6 +614,191 @@ object ApiClient {
             }
         } catch (e: Exception) {
             android.util.Log.e("ApiClient", "getChildReview - Exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Generate a puzzle for a child
+     * @param parentId The ID of the parent
+     * @param kidId The ID of the child
+     * @param type Puzzle type (image, word, number, sequence, pattern) - optional
+     * @param difficulty Difficulty level (easy, medium, hard) - optional
+     * @param gridSize Grid size for the puzzle - optional
+     * @param topic Topic for the puzzle - optional
+     * @return Result containing ChildResponse on success or error message on failure
+     */
+    suspend fun generatePuzzle(
+        parentId: String,
+        kidId: String?,
+        type: String? = null,
+        difficulty: String? = null,
+        gridSize: Int? = null,
+        topic: String? = null
+    ): Result<ChildResponse> {
+        return try {
+            // Validate required parameters
+            if (kidId.isNullOrBlank()) {
+                return Result.failure(Exception("Kid ID is required"))
+            }
+            
+            android.util.Log.d("ApiClient", "generatePuzzle - parentId: $parentId, kidId: $kidId, type: $type, difficulty: $difficulty, gridSize: $gridSize, topic: $topic")
+            val request = com.example.edukid_android.models.GeneratePuzzleRequest(
+                type = type?.lowercase(),
+                difficulty = difficulty?.lowercase(),
+                gridSize = gridSize,
+                topic = topic?.takeIf { it.isNotBlank() }
+            )
+            android.util.Log.d("ApiClient", "generatePuzzle - Request body: $request")
+            val response = apiService.generatePuzzle(parentId, kidId, request)
+            android.util.Log.d("ApiClient", "generatePuzzle - Response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
+            
+            if (response.isSuccessful && response.body() != null) {
+                val raw = response.body()!!.string()
+                android.util.Log.d("ApiClient", "generatePuzzle - Raw response: $raw")
+                val gson = Gson()
+                
+                // Try parsing as full ChildResponse
+                try {
+                    val childResp = gson.fromJson(raw, ChildResponse::class.java)
+                    if (childResp != null) {
+                        android.util.Log.d("ApiClient", "generatePuzzle - Success! Parsed as ChildResponse")
+                        return Result.success(childResp)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.d("ApiClient", "generatePuzzle - Failed to parse as ChildResponse: ${e.message}")
+                }
+
+                // Try parsing as single PuzzleResponse
+                try {
+                    val puzzleResp = gson.fromJson(raw, com.example.edukid_android.models.PuzzleResponse::class.java)
+                    if (puzzleResp != null) {
+                        android.util.Log.d("ApiClient", "generatePuzzle - Parsed as single PuzzleResponse, synthesizing ChildResponse")
+                        val synthesizedChild = ChildResponse(
+                            name = "",
+                            age = 0,
+                            level = "",
+                            avatarEmoji = null,
+                            quizzes = emptyList(),
+                            score = 0,
+                            id = kidId
+                        )
+                        return Result.success(synthesizedChild)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.d("ApiClient", "generatePuzzle - Failed to parse as PuzzleResponse: ${e.message}")
+                }
+
+                Result.failure(Exception("Unexpected response format"))
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Generate puzzle failed: ${response.code()}"
+                android.util.Log.e("ApiClient", "generatePuzzle - Failed: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ApiClient", "generatePuzzle - Exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Submit puzzle solution
+     * @param parentId The ID of the parent
+     * @param kidId The ID of the child
+     * @param puzzleId The ID of the puzzle
+     * @param positions Array of piece positions (indices)
+     * @param timeSpent Time spent in seconds
+     * @return Result containing ChildResponse on success or error message on failure
+     */
+    suspend fun submitPuzzle(
+        parentId: String,
+        kidId: String,
+        puzzleId: String,
+        positions: List<Int>,
+        timeSpent: Int
+    ): Result<ChildResponse> {
+        return try {
+            android.util.Log.d("ApiClient", "submitPuzzle - parentId: $parentId, kidId: $kidId, puzzleId: $puzzleId, positions: $positions, timeSpent: $timeSpent")
+            val request = com.example.edukid_android.models.SubmitPuzzleRequest(
+                positions = positions,
+                timeSpent = timeSpent
+            )
+            android.util.Log.d("ApiClient", "submitPuzzle - Request body: $request")
+            val response = apiService.submitPuzzle(parentId, kidId, puzzleId, request)
+            android.util.Log.d("ApiClient", "submitPuzzle - Response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
+            
+            if (response.isSuccessful && response.body() != null) {
+                android.util.Log.d("ApiClient", "submitPuzzle - Success! Response body: ${response.body()}")
+                Result.success(response.body()!!)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Submit puzzle failed: ${response.code()}"
+                android.util.Log.e("ApiClient", "submitPuzzle - Failed: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ApiClient", "submitPuzzle - Exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Delete a quiz
+     * @param parentId The ID of the parent
+     * @param kidId The ID of the child
+     * @param quizId The ID of the quiz to delete
+     * @return Result containing Unit on success or error message on failure
+     */
+    suspend fun deleteQuiz(
+        parentId: String,
+        kidId: String,
+        quizId: String
+    ): Result<Unit> {
+        return try {
+            android.util.Log.d("ApiClient", "deleteQuiz - parentId: $parentId, kidId: $kidId, quizId: $quizId")
+            val response = apiService.deleteQuiz(parentId, kidId, quizId)
+            android.util.Log.d("ApiClient", "deleteQuiz - Response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
+            
+            if (response.isSuccessful) {
+                android.util.Log.d("ApiClient", "deleteQuiz - Success!")
+                Result.success(Unit)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Delete quiz failed: ${response.code()}"
+                android.util.Log.e("ApiClient", "deleteQuiz - Failed: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ApiClient", "deleteQuiz - Exception: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Delete a puzzle
+     * @param parentId The ID of the parent
+     * @param kidId The ID of the child
+     * @param puzzleId The ID of the puzzle to delete
+     * @return Result containing Unit on success or error message on failure
+     */
+    suspend fun deletePuzzle(
+        parentId: String,
+        kidId: String,
+        puzzleId: String
+    ): Result<Unit> {
+        return try {
+            android.util.Log.d("ApiClient", "deletePuzzle - parentId: $parentId, kidId: $kidId, puzzleId: $puzzleId")
+            val response = apiService.deletePuzzle(parentId, kidId, puzzleId)
+            android.util.Log.d("ApiClient", "deletePuzzle - Response code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
+            
+            if (response.isSuccessful) {
+                android.util.Log.d("ApiClient", "deletePuzzle - Success!")
+                Result.success(Unit)
+            } else {
+                val errorMessage = response.errorBody()?.string() ?: "Delete puzzle failed: ${response.code()}"
+                android.util.Log.e("ApiClient", "deletePuzzle - Failed: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ApiClient", "deletePuzzle - Exception: ${e.message}", e)
             Result.failure(e)
         }
     }
